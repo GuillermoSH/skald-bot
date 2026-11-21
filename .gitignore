@@ -1,0 +1,26 @@
+# --- Dependencias y compilación ---
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# --- Secretos: nunca al repositorio ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Contexto privado (infraestructura, red, notas locales) ---
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.local/
+*.tar.gz
+
+# --- Logs y basura de sistema/editor ---
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

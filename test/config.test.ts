@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+import { ConfigError, loadConfig } from "../src/config.js";
+
+const valid = {
+  DISCORD_TOKEN: "token-de-prueba",
+  DISCORD_GUILD_ID: "123456789012345678",
+  RCON_PASSWORD: "secreto-de-prueba",
+};
+
+describe("loadConfig", () => {
+  it("aplica valores por defecto", () => {
+    const c = loadConfig(valid);
+    expect(c.RCON_HOST).toBe("minecraft");
+    expect(c.RCON_PORT).toBe(25575);
+    expect(c.ADMIN_USER_IDS).toEqual([]);
+  });
+
+  it("parsea la lista de administradores", () => {
+    const c = loadConfig({ ...valid, ADMIN_USER_IDS: "123456789012345678, 876543210987654321" });
+    expect(c.ADMIN_USER_IDS).toEqual(["123456789012345678", "876543210987654321"]);
+  });
+
+  it("falla si falta algo obligatorio, listando la variable", () => {
+    expect(() => loadConfig({ ...valid, RCON_PASSWORD: "" })).toThrow(/RCON_PASSWORD/);
+  });
+
+  it("nunca incluye valores en el mensaje de error", () => {
+    try {
+      loadConfig({ ...valid, DISCORD_GUILD_ID: "no-es-un-id", RCON_PORT: "99999" });
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      const msg = (error as Error).message;
+      expect(msg).toContain("DISCORD_GUILD_ID");
+      expect(msg).toContain("RCON_PORT");
+      expect(msg).not.toContain("token-de-prueba");
+      expect(msg).not.toContain("secreto-de-prueba");
+      expect(msg).not.toContain("no-es-un-id");
+    }
+  });
+});

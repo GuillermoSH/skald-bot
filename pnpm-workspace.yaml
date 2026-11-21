@@ -1,0 +1,14 @@
+# Solo instala versiones publicadas hace al menos 14 días (en minutos).
+# Freno ante paquetes comprometidos recién publicados.
+minimumReleaseAge: 20160
+
+# pnpm 11.0.8 falla (ERR_PNPM_MISSING_TIME) con los paquetes internos de
+# typescript-eslint. Van fijados a versión exacta por typescript-eslint, que sí
+# pasa la comprobación, así que excluirlos no abre la puerta a versiones nuevas.
+minimumReleaseAgeExclude:
+  - "@typescript-eslint/*"
+
+# esbuild (vía tsx y vitest) trae su binario como dependencia opcional; su
+# script postinstall solo lo verifica. No hace falta ejecutarlo.
+allowBuilds:
+  esbuild: false

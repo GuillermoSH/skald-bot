@@ -1,0 +1,11 @@
+{
+  "_comment": "Respuestas reales de RCON capturadas de un servidor vanilla 26.2 local (test/local-server). Las marcadas con «sintético» están escritas a mano siguiendo el mismo formato.",
+  "list.empty": "There are 0 of a max of 20 players online: ",
+  "list.players": "There are 3 of a max of 20 players online: Ragnar, Steve_99, alex",
+  "list.players.sintético": true,
+  "tick.normal": "The game is running normallyTarget tick rate: 20.0 per second.\nAverage time per tick: 0.1ms (Target: 50.0ms)Percentiles: P50: 0.1ms P95: 0.2ms P99: 0.3ms. Sample: 100",
+  "tick.frozen": "The game is frozenTarget tick rate: 20.0 per second.\nAverage time per tick: 0.1ms (Target: 50.0ms)Percentiles: P50: 0.1ms P95: 0.1ms P99: 2.7ms. Sample: 100",
+  "tick.sprinting": "The game is sprintingTarget tick rate: 20.0 per second (ignored, reference only).\nAverage time per tick: 0.1msPercentiles: P50: 0.1ms P95: 0.1ms P99: 2.7ms. Sample: 100",
+  "tick.lagging.sintético": "The game is running, but can't keep up with the target tick rateTarget tick rate: 20.0 per second.\nAverage time per tick: 62.4ms (Target: 50.0ms)Percentiles: P50: 58.0ms P95: 80.1ms P99: 95.3ms. Sample: 100",
+  "version": "Server version info:id = 26.2name = 26.2data = 4903series = mainprotocol = 776 (0x308)build_time = Tue Jun 16 12:01:27 UTC 2026pack_resource = 88.0pack_data = 107.1stable = yes"
+}

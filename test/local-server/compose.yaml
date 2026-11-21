@@ -1,0 +1,31 @@
+# Servidor de Minecraft DESECHABLE para probar el bot en local (WSL).
+# No tiene nada que ver con producción: mundo nuevo, puertos solo en 127.0.0.1.
+#
+#   docker compose -f test/local-server/compose.yaml up -d
+#   docker compose -f test/local-server/compose.yaml down -v   # lo borra todo
+#
+# EULA=TRUE acepta la EULA de Minecraft (https://aka.ms/MinecraftEULA).
+name: skald-local
+
+services:
+  minecraft:
+    image: itzg/minecraft-server:java25
+    environment:
+      EULA: "TRUE"
+      TYPE: VANILLA
+      VERSION: "26.2"
+      ONLINE_MODE: "FALSE"
+      MEMORY: 1G
+      MOTD: "§6El reino §7(pruebas locales)"
+      ENABLE_RCON: "TRUE"
+      # Contraseña de usar y tirar: el RCON solo escucha en 127.0.0.1.
+      RCON_PASSWORD: ${LOCAL_RCON_PASSWORD:-skald-local}
+      LEVEL_TYPE: minecraft:flat
+    ports:
+      - "127.0.0.1:25565:25565"
+      - "127.0.0.1:25575:25575"
+    volumes:
+      - data:/data
+
+volumes:
+  data:
