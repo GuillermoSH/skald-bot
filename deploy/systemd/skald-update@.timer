@@ -1,0 +1,11 @@
+[Unit]
+Description=Comprueba cada 5 minutos si hay una versión nueva de Skald
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Unit=skald-update@%i.service
+
+[Install]
+WantedBy=timers.target

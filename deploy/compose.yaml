@@ -1,0 +1,47 @@
+# Stack de producción de Skald. Va en su propia carpeta, junto a la del servidor:
+#
+#   /opt/stacks/
+#     minecraft/   compose del servidor (con data/ y backups/)
+#     skald/       este compose.yaml + .env
+#
+# No toca el stack del Minecraft: solo se une a su red para llegar a RCON y
+# monta sus carpetas en solo lectura.
+name: skald
+
+services:
+  skald:
+    image: ghcr.io/guillermosh/skald-bot:${SKALD_TAG:-latest}
+    container_name: skald
+    restart: unless-stopped
+    env_file: .env
+    init: true
+    # Endurecimiento: sin escritura en el sistema de ficheros, sin capabilities.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    volumes:
+      # El mundo es sagrado: siempre en solo lectura. Si la ruta no existe,
+      # falla en vez de crear una carpeta vacía.
+      - type: bind
+        source: ${MINECRAFT_DIR:-../minecraft}/data
+        target: /data
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${MINECRAFT_DIR:-../minecraft}/backups
+        target: /backups
+        read_only: true
+        bind: { create_host_path: false }
+    networks: [minecraft]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  minecraft:
+    # Red por defecto del compose del servidor (carpeta "minecraft" → "minecraft_default").
+    name: ${MINECRAFT_NETWORK:-minecraft_default}
+    external: true

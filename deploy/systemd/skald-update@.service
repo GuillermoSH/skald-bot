@@ -1,0 +1,18 @@
+# Actualiza Skald si hay imagen nueva en GHCR. Compose solo recrea el
+# contenedor si la imagen ha cambiado; el stack del Minecraft no se toca.
+#
+# Plantilla: el texto tras la @ es el usuario que lo ejecuta (debe estar en el
+# grupo docker), p. ej. skald-update@miusuario.service
+[Unit]
+Description=Actualiza Skald desde GHCR
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=%i
+WorkingDirectory=/opt/stacks/skald
+ExecStart=/usr/bin/docker compose pull --quiet skald
+ExecStart=/usr/bin/docker compose up -d --remove-orphans skald
+# Borra solo imágenes antiguas de Skald que ya no usa nadie.
+ExecStartPost=/usr/bin/docker image prune -f --filter label=org.opencontainers.image.source=https://github.com/GuillermoSH/skald-bot

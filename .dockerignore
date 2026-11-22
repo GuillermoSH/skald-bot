@@ -1,0 +1,8 @@
+# Solo entra en la imagen lo que copia el Dockerfile; todo lo demás, fuera.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.json
+!tsconfig.build.json
+!src/

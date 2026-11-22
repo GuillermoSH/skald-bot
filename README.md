@@ -86,12 +86,59 @@ pnpm register   # cada vez que se añade o cambia un comando
 pnpm dev        # desarrollo, con recarga
 ```
 
-En producción:
+Sin Docker:
 
 ```bash
 pnpm build
 pnpm start
 ```
+
+## Despliegue con Docker
+
+Cada push a `main` que pasa las comprobaciones publica la imagen en GHCR:
+
+- `ghcr.io/guillermosh/skald-bot:latest`
+- `ghcr.io/guillermosh/skald-bot:sha-<commit>` (para fijar o volver a una versión concreta)
+
+`deploy/compose.yaml` es un stack independiente que se coloca junto al del servidor de Minecraft. No toca ese stack: se une a su red para llegar a RCON (sin publicar puertos) y monta `data/` y `backups/` en **solo lectura**. El contenedor corre como usuario sin privilegios (UID 1000), con el sistema de ficheros en solo lectura y sin *capabilities*.
+
+```
+/opt/stacks/
+  minecraft/     compose del servidor, con data/ y backups/
+  skald/
+    compose.yaml   (copia de deploy/compose.yaml)
+    .env           (permisos 600)
+```
+
+```bash
+cd /opt/stacks/skald
+docker compose pull
+docker compose up -d
+docker compose logs -f
+```
+
+Variables opcionales del stack (en el `.env` o en el entorno): `MINECRAFT_DIR` (por defecto `../minecraft`), `MINECRAFT_NETWORK` (por defecto `minecraft_default`) y `SKALD_TAG` (por defecto `latest`).
+
+Para registrar o actualizar los comandos slash desde el servidor:
+
+```bash
+docker compose run --rm skald node dist/register.js
+```
+
+> No ejecutes a la vez una copia local (`pnpm dev`) y la de producción con el mismo token: las dos intentarían responder a cada comando.
+
+### Actualización automática
+
+`deploy/systemd/` trae un temporizador que cada 5 minutos descarga la imagen y recrea el contenedor solo si ha cambiado. Es una plantilla: el texto tras la `@` es el usuario que lo ejecuta, que debe estar en el grupo `docker`.
+
+```bash
+sudo cp deploy/systemd/skald-update@.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now skald-update@TU_USUARIO.timer
+systemctl list-timers 'skald-update*'
+```
+
+Nadie empuja nada al servidor: es él quien comprueba si hay versión nueva. Para fijar una versión, pon `SKALD_TAG=sha-<commit>` en el `.env` del stack.
 
 ## Desarrollo
 
@@ -120,7 +167,7 @@ Los parsers de `src/core/parsers.ts` dependen del texto que devuelve el servidor
 ## Hoja de ruta
 
 - [x] Consultas básicas: estado, jugadores, datos técnicos, mapa, presencia
-- [ ] Imagen Docker y despliegue junto al servidor (Compose)
+- [x] Imagen Docker, despliegue junto al servidor (Compose) y actualización automática
 - [ ] Estadísticas y rankings a partir de los ficheros del mundo
 - [ ] Avisos en un canal: entradas, salidas, muertes y logros
 - [ ] Estado de las copias de seguridad
