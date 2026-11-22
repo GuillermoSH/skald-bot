@@ -6,10 +6,13 @@ import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
 } from "discord.js";
+import { AlertQueue, createChannelSender } from "./alerts.js";
 import { commandsByName } from "./commands/index.js";
 import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
-import { Translator } from "./core/lang.js";
+import { Chronicle } from "./core/chronicle.js";
+import { jarEnglishLoader, fetchSpanishLang, Translator } from "./core/lang.js";
+import { LogWatcher } from "./core/logwatch.js";
 import { NameResolver } from "./core/names.js";
 import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
@@ -42,11 +45,22 @@ function main(): void {
     }),
     world: new WorldStats(config.DATA_DIR),
     names: new NameResolver(config.DATA_DIR),
-    lang: new Translator(async () => {
-      const status = await getServerStatus(config.MC_HOST, config.MC_PORT, config.RCON_TIMEOUT_MS);
-      return status.online ? status.version : null;
-    }),
+    lang: new Translator(
+      async () => {
+        const status = await getServerStatus(config.MC_HOST, config.MC_PORT, config.RCON_TIMEOUT_MS);
+        return status.online ? status.version : null;
+      },
+      fetchSpanishLang,
+      jarEnglishLoader(config.DATA_DIR),
+    ),
+    chronicle: new Chronicle(),
   };
+
+  let alerts: AlertQueue | null = null;
+  const watcher = new LogWatcher(config.DATA_DIR, ctx.lang, (event, live) => {
+    ctx.chronicle.add(event);
+    if (live) alerts?.push(event);
+  });
 
   const client = new Client({
     intents: [GatewayIntentBits.Guilds],
@@ -59,9 +73,27 @@ function main(): void {
   client.once(Events.ClientReady, (ready) => {
     log.info(`Conectado a Discord como ${ready.user.tag}`);
     stopPresence = startPresenceLoop(ready, config);
-    // Precarga de los textos en español (no bloquea; si falla se reintenta al usarlos).
-    void ctx.lang.ready();
+    void startLogWatch(ready);
   });
+
+  // Textos primero (para reconocer muertes y traducir), luego avisos y log.
+  const startLogWatch = async (ready: Client<true>) => {
+    await ctx.lang.ready();
+    if (config.ALERT_CHANNEL_ID) {
+      const send = await createChannelSender(ready, config.ALERT_CHANNEL_ID);
+      if (send) {
+        alerts = new AlertQueue(send, new Set(config.ALERT_EVENTS), {}, (error) => {
+          log.warn(`No se pudo enviar un aviso: ${error instanceof Error ? error.message : String(error)}`);
+        });
+      }
+    }
+    try {
+      await watcher.start();
+      log.info("Siguiendo el log del servidor");
+    } catch (error) {
+      log.error(`No se pudo seguir el log: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
   client.on(Events.InteractionCreate, (interaction) => {
     if (interaction.isChatInputCommand()) void handleCommand(interaction, ctx);
@@ -71,6 +103,8 @@ function main(): void {
   const shutdown = (signal: string) => {
     log.info(`Recibido ${signal}, cerrando…`);
     stopPresence();
+    watcher.stop();
+    alerts?.dispose();
     void client.destroy().finally(() => process.exit(0));
   };
   process.once("SIGINT", () => { shutdown("SIGINT"); });

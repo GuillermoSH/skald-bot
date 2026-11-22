@@ -14,6 +14,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/guerreros` | Quién está conectado ahora mismo |
 | `/gestas <categoría>` | Rankings: tiempo jugado, muertes, mobs, distancia… y otros menos serios (pasto de creepers, muertes tontas, lanzahuevos, rage quit…) |
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
+| `/saga` | Las últimas muertes y logros del reino |
 | `/runas` | Versión, cargador y datos técnicos del servidor |
 | `/mapa` | Enlace al mapa web (BlueMap), si está configurado |
 | `/ayuda` | Lista de comandos (solo la ve quien la pide) |
@@ -25,6 +26,19 @@ Además, el bot muestra un estado personalizado según cómo esté el servidor:
 | Con jugadores | En línea | ⚔️ *n* guerreros en el reino |
 | Vacío | Ausente | 🌙 Silencio en las salas |
 | Caído | No molestar | 💤 El reino duerme (offline) |
+
+### Avisos en un canal
+
+Si se configura `ALERT_CHANNEL_ID`, Skald sigue el log del servidor y avisa en ese canal de:
+
+- 🟢 entradas y 🔴 salidas (salir y volver en menos de 20 s no genera avisos),
+- muertes, en español: en combate, las valquirias se los llevan al **Valhalla**; las muertes sin gloria (caídas, lava, ahogamientos…) son para **Hel**,
+- 🏆 logros, 🎖️ desafíos y 🎯 metas, con su nombre en español,
+- 🔥 arranque y 🌑 parada del servidor.
+
+Los avisos se agrupan y tienen un límite por minuto. `ALERT_EVENTS` elige qué tipos se avisan. El bot necesita en ese canal los permisos *Ver canal*, *Enviar mensajes* e *Insertar enlaces*; si falta alguno, lo dice en su log al arrancar.
+
+Las muertes se reconocen con las plantillas oficiales del juego (`death.*`), que Skald lee del jar del servidor (`versions/<versión>/server-<versión>.jar`, en solo lectura), así que cubre todas las causas de muerte de la versión instalada.
 
 ## Diseño y seguridad
 
@@ -76,7 +90,8 @@ Rellena `.env`:
 | `RCON_HOST`, `RCON_PORT` | No | Host y puerto RCON (por defecto `minecraft:25575`) |
 | `BLUEMAP_URL` | No | Enlace para `/mapa` |
 | `DATA_DIR` | No | Carpeta `data` del servidor (por defecto `/data`, la del contenedor) |
-| `ALERT_CHANNEL_ID` | No | Canal de avisos (próximamente) |
+| `ALERT_CHANNEL_ID` | No | Canal de avisos |
+| `ALERT_EVENTS` | No | Qué avisar: `join,leave,death,advancement,server` (por defecto, todo) |
 | `ADMIN_USER_IDS` | No | IDs de administradores, separados por comas |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn` o `error` |
 
@@ -180,6 +195,6 @@ Los parsers de `src/core/parsers.ts` dependen del texto que devuelve el servidor
 - [x] Consultas básicas: estado, jugadores, datos técnicos, mapa, presencia
 - [x] Imagen Docker, despliegue junto al servidor (Compose) y actualización automática
 - [x] Estadísticas y rankings a partir de los ficheros del mundo
-- [ ] Avisos en un canal: entradas, salidas, muertes y logros
+- [x] Avisos en un canal: entradas, salidas, muertes y logros
 - [ ] Estado de las copias de seguridad
 - [ ] Adaptadores para servidores con mods

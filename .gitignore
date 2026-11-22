@@ -20,6 +20,7 @@ CLAUDE.local.md
 
 # --- Logs y basura de sistema/editor ---
 *.log
+!test/fixtures/**/*.log
 .DS_Store
 Thumbs.db
 .idea/

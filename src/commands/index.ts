@@ -5,6 +5,7 @@ import { guerreros } from "./guerreros.js";
 import { mapa } from "./mapa.js";
 import { reino } from "./reino.js";
 import { runas } from "./runas.js";
+import { saga } from "./saga.js";
 import type { Command } from "./types.js";
 
 export const commands: readonly Command[] = [
@@ -12,6 +13,7 @@ export const commands: readonly Command[] = [
   guerreros,
   gestas,
   cronica,
+  saga,
   runas,
   mapa,
   createAyuda(() => commands),

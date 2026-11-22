@@ -4,6 +4,7 @@ import type {
   RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord.js";
 import type { Config } from "../config.js";
+import type { Chronicle } from "../core/chronicle.js";
 import type { Translator } from "../core/lang.js";
 import type { NameResolver } from "../core/names.js";
 import type { RconClient } from "../core/rcon.js";
@@ -15,6 +16,7 @@ export interface CommandContext {
   world: WorldStats;
   names: NameResolver;
   lang: Translator;
+  chronicle: Chronicle;
 }
 
 export interface Command {

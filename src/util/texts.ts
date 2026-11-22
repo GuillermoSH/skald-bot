@@ -2,6 +2,7 @@
  * Todos los textos de Skald, el bardo del reino (temática nórdica).
  * Para cambiar el tono basta con tocar este fichero.
  */
+import type { AdvancementKind } from "../core/logwatch.js";
 import type { MetricId } from "../core/metrics.js";
 import type { TickState } from "../core/parsers.js";
 
@@ -120,6 +121,42 @@ export const texts = {
     noAdvancements: "Aún ninguno. Todo héroe empieza en algún sitio.",
     unknown: (name: string) => `Skald no conoce a ningún guerrero llamado **${name}**.`,
     invalidName: "Ese no parece un nombre de guerrero de Minecraft.",
+  },
+
+  // Avisos en el canal (#cuervos). {p} ya viene escapado y en negrita.
+  alerts: {
+    join: (p: string) => `🟢 ${p} ha entrado en el reino.`,
+    leave: (p: string) => `🔴 ${p} ha abandonado el reino.`,
+    serverStart: "🔥 El reino despierta.",
+    serverStop: "🌑 El reino se apaga.",
+    // Muerte en combate: al Valhalla con las valquirias.
+    valhalla: [
+      (p: string) => `Las valquirias se han llevado a ${p} al Valhalla.`,
+      (p: string) => `${p} ha caído en combate. Esta noche cena en el Valhalla.`,
+      (p: string) => `Odín abre las puertas de su salón a ${p}.`,
+      (p: string) => `Las valquirias bajan del cielo: ${p} ha caído luchando.`,
+    ],
+    // Muerte sin gloria (caídas, lava, ahogado...): se lo lleva Hel.
+    hel: [
+      (p: string) => `Hel reclama el alma de ${p}. Sin gloria no hay Valhalla.`,
+      (p: string) => `${p} ha muerto sin espada en la mano. Hel se lo lleva.`,
+      (p: string) => `Ninguna valquiria vino a por ${p}: hoy duerme en Helheim.`,
+    ],
+    advancement: {
+      task: (p: string, t: string) => `🏆 ${p} ha conseguido el logro **[${t}]**.`,
+      challenge: (p: string, t: string) => `🎖️ ${p} ha completado el desafío **[${t}]**.`,
+      goal: (p: string, t: string) => `🎯 ${p} ha alcanzado la meta **[${t}]**.`,
+    } satisfies Record<AdvancementKind, (p: string, t: string) => string>,
+    dropped: (n: number) => `-# …y ${n} avisos más que los cuervos no pudieron cargar.`,
+  },
+
+  // /saga
+  saga: {
+    title: "📖 La saga del reino",
+    empty: "Las crónicas de hoy siguen en blanco. Nadie ha muerto ni ha logrado nada… aún.",
+    note: "-# Hazañas y caídas del registro de hoy.",
+    deathEmoji: { combat: "⚔️", hel: "🪦" },
+    advancementEmoji: { task: "🏆", challenge: "🎖️", goal: "🎯" } satisfies Record<AdvancementKind, string>,
   },
 
   /** Cuando no se sabe el nombre de un UUID. */

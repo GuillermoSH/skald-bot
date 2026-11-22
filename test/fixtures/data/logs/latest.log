@@ -1,0 +1,15 @@
+[10:00:00] [Server thread/INFO]: Starting minecraft server version 26.2
+[10:00:05] [Server thread/INFO]: Done (4.812s)! For help, type "help"
+[10:01:00] [User Authenticator #1/INFO]: UUID of player Ragnar is 11111111-1111-4111-8111-111111111111
+[10:01:00] [Server thread/INFO]: Ragnar[/192.0.2.10:50000] logged in with entity id 42 at (0.5, 64.0, 0.5)
+[10:01:00] [Server thread/INFO]: Ragnar joined the game
+[10:02:00] [Server thread/INFO]: <Ragnar> was blown up by Creeper
+[10:03:00] [Server thread/INFO]: Ragnar was blown up by Creeper
+[10:04:00] [Server thread/INFO]: Ragnar has made the advancement [Hot Tourist Destinations]
+[10:05:00] [Server thread/INFO]: [Rcon: Ragnar fell from a high place]
+[10:06:00] [Server thread/INFO]: Villager['Villager'/931, l='ServerLevel[world]', x=1.0, y=64.0, z=1.0] died, message: 'Villager was slain by Zombie'
+[10:07:00] [Server thread/INFO]: Ragnar fell from a high place
+[10:08:00] [Server thread/INFO]: Ragnar lost connection: Disconnected
+[10:08:00] [Server thread/INFO]: Ragnar left the game
+[10:09:00] [Server thread/INFO]: Server empty for 60 seconds, pausing
+[10:10:00] [Server thread/INFO]: Stopping server

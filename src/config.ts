@@ -5,6 +5,20 @@ const snowflake = z.string().regex(/^\d{17,20}$/, "debe ser un ID de Discord (so
 
 const port = z.coerce.number().int().min(1).max(65535);
 
+export const ALERT_EVENT_TYPES = ["join", "leave", "death", "advancement", "server"] as const;
+export type AlertEventType = (typeof ALERT_EVENT_TYPES)[number];
+
+const alertEventList = z
+  .string()
+  .default(ALERT_EVENT_TYPES.join(","))
+  .transform((raw) =>
+    raw
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter((t) => t.length > 0),
+  )
+  .pipe(z.array(z.enum(ALERT_EVENT_TYPES)));
+
 const snowflakeList = z
   .string()
   .default("")
@@ -23,8 +37,10 @@ export const discordSchema = z.object({
 });
 
 export const configSchema = discordSchema.extend({
-  // Se usará en la fase 3 (avisos); de momento es opcional.
+  // Canal de avisos. Sin él, no se avisa (pero /saga funciona).
   ALERT_CHANNEL_ID: snowflake.optional(),
+  // Qué avisar: join, leave, death, advancement, server (separados por comas).
+  ALERT_EVENTS: alertEventList,
   ADMIN_USER_IDS: snowflakeList,
 
   MC_HOST: z.string().min(1).default("minecraft"),
