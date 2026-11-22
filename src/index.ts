@@ -1,9 +1,20 @@
-import { Client, Events, GatewayIntentBits, MessageFlags, type ChatInputCommandInteraction } from "discord.js";
+import {
+  Client,
+  Events,
+  GatewayIntentBits,
+  MessageFlags,
+  type AutocompleteInteraction,
+  type ChatInputCommandInteraction,
+} from "discord.js";
 import { commandsByName } from "./commands/index.js";
 import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
+import { Translator } from "./core/lang.js";
+import { NameResolver } from "./core/names.js";
 import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
+import { getServerStatus } from "./core/status.js";
+import { WorldDataUnavailableError, WorldStats } from "./core/stats.js";
 import { STARTING_PRESENCE, startPresenceLoop } from "./presence.js";
 import { log, setLogLevel } from "./util/log.js";
 import { texts } from "./util/texts.js";
@@ -29,6 +40,12 @@ function main(): void {
       password: config.RCON_PASSWORD,
       timeoutMs: config.RCON_TIMEOUT_MS,
     }),
+    world: new WorldStats(config.DATA_DIR),
+    names: new NameResolver(config.DATA_DIR),
+    lang: new Translator(async () => {
+      const status = await getServerStatus(config.MC_HOST, config.MC_PORT, config.RCON_TIMEOUT_MS);
+      return status.online ? status.version : null;
+    }),
   };
 
   const client = new Client({
@@ -42,11 +59,13 @@ function main(): void {
   client.once(Events.ClientReady, (ready) => {
     log.info(`Conectado a Discord como ${ready.user.tag}`);
     stopPresence = startPresenceLoop(ready, config);
+    // Precarga de los textos en español (no bloquea; si falla se reintenta al usarlos).
+    void ctx.lang.ready();
   });
 
   client.on(Events.InteractionCreate, (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    void handleCommand(interaction, ctx);
+    if (interaction.isChatInputCommand()) void handleCommand(interaction, ctx);
+    else if (interaction.isAutocomplete()) void handleAutocomplete(interaction, ctx);
   });
 
   const shutdown = (signal: string) => {
@@ -86,10 +105,25 @@ async function handleCommand(interaction: ChatInputCommandInteraction, ctx: Comm
     } else if (error instanceof RconParseError) {
       message = texts.parseError;
       log.error(error.message);
+    } else if (error instanceof WorldDataUnavailableError) {
+      message = texts.worldUnavailable;
+      const cause = error.cause instanceof Error ? ` (${error.cause.message})` : "";
+      log.error(`/${interaction.commandName}: ${error.message}${cause}`);
     } else {
       log.error(`/${interaction.commandName} falló`, error);
     }
     await replyError(interaction, message);
+  }
+}
+
+async function handleAutocomplete(interaction: AutocompleteInteraction, ctx: CommandContext): Promise<void> {
+  const command = commandsByName.get(interaction.commandName);
+  if (!command?.autocomplete || interaction.guildId !== ctx.config.DISCORD_GUILD_ID) return;
+  try {
+    await command.autocomplete(interaction, ctx);
+  } catch (error) {
+    log.warn(`Autocompletado de /${interaction.commandName}: ${error instanceof Error ? error.message : String(error)}`);
+    await interaction.respond([]).catch(() => undefined);
   }
 }
 

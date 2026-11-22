@@ -1,0 +1,49 @@
+{
+  "stats": {
+    "minecraft:custom": {
+      "minecraft:play_time": 720000,
+      "minecraft:total_world_time": 720000,
+      "minecraft:deaths": 12,
+      "minecraft:mob_kills": 340,
+      "minecraft:jump": 5400,
+      "minecraft:sleep_in_bed": 20,
+      "minecraft:leave_game": 15,
+      "minecraft:time_since_death": 36000,
+      "minecraft:walk_one_cm": 1500000,
+      "minecraft:sprint_one_cm": 900000,
+      "minecraft:fall_one_cm": 50000,
+      "minecraft:aviate_one_cm": 250000,
+      "minecraft:swim_one_cm": 30000,
+      "minecraft:walk_under_water_one_cm": 10000,
+      "minecraft:player_kills": 1,
+      "minecraft:traded_with_villager": 40,
+      "minecraft:bell_ring": 3
+    },
+    "minecraft:killed_by": {
+      "minecraft:creeper": 3,
+      "minecraft:zombie": 4,
+      "minecraft:skeleton": 2
+    },
+    "minecraft:killed": {
+      "minecraft:chicken": 25,
+      "minecraft:zombie": 100,
+      "minecraft:skeleton": 60
+    },
+    "minecraft:mined": {
+      "minecraft:stone": 4000,
+      "minecraft:netherrack": 2000,
+      "minecraft:oak_log": 300,
+      "minecraft:pumpkin_stem": 5,
+      "minecraft:diamond_ore": 6,
+      "minecraft:deepslate_diamond_ore": 4
+    },
+    "minecraft:broken": {
+      "minecraft:iron_pickaxe": 3
+    },
+    "minecraft:used": {
+      "minecraft:egg": 50,
+      "minecraft:diamond_pickaxe": 900
+    }
+  },
+  "DataVersion": 4903
+}

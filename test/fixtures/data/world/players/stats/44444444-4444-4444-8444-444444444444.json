@@ -1,0 +1,16 @@
+{
+  "stats": {
+    "minecraft:custom": {
+      "minecraft:play_time": 72000,
+      "minecraft:deaths": 0,
+      "minecraft:mob_kills": 50,
+      "minecraft:jump": 100,
+      "minecraft:time_since_death": 72000,
+      "minecraft:walk_one_cm": 400000
+    },
+    "minecraft:killed": {
+      "minecraft:chicken": 400
+    }
+  },
+  "DataVersion": 4903
+}

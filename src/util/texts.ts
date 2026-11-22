@@ -2,6 +2,7 @@
  * Todos los textos de Skald, el bardo del reino (temática nórdica).
  * Para cambiar el tono basta con tocar este fichero.
  */
+import type { MetricId } from "../core/metrics.js";
 import type { TickState } from "../core/parsers.js";
 
 export const BOT_NAME = "Skald";
@@ -66,11 +67,70 @@ export const texts = {
   // /ayuda
   helpTitle: "📜 Lo que sabe cantar Skald",
 
+  // /gestas
+  gestas: {
+    optionName: "categoria",
+    optionDescription: "Qué gesta quieres escuchar",
+    empty: "Nadie ha protagonizado aún esta gesta.",
+    note: "-# Según el último guardado del mundo (cada ~5 min).",
+    medals: ["🥇", "🥈", "🥉", "4.", "5."],
+    categories: {
+      play_time: { emoji: "⏳", label: "Tiempo en el reino" },
+      deaths: { emoji: "💀", label: "Muertes" },
+      mob_kills: { emoji: "⚔️", label: "Mobs abatidos" },
+      blocks_mined: { emoji: "⛏️", label: "Bloques picados" },
+      advancements: { emoji: "🏆", label: "Logros" },
+      distance: { emoji: "🧭", label: "Distancia recorrida" },
+      creeper_deaths: { emoji: "💥", label: "Pasto de creepers", hint: "Veces que un creeper los mandó al Valhalla." },
+      silly_deaths: { emoji: "🤡", label: "Muertes tontas", hint: "Muertes sin un mob de por medio: caídas, lava, ahogamientos…" },
+      elytra: { emoji: "🪽", label: "Ícaro", hint: "Distancia volada con élitros." },
+      chickens: { emoji: "🐔", label: "Verdugo de pollos", hint: "Pollos que no volverán a cacarear." },
+      sleep: { emoji: "🛏️", label: "Dormilón", hint: "Veces que se han ido a la cama." },
+      jumps: { emoji: "🐸", label: "Saltarín", hint: "Saltos. Muchos saltos." },
+      survivor: { emoji: "🛡️", label: "Superviviente", hint: "Tiempo de juego desde su última muerte." },
+      rage_quit: { emoji: "🚪", label: "Rage quit", hint: "Veces que han salido del reino." },
+      eggs: { emoji: "🥚", label: "Lanzahuevos", hint: "Huevos lanzados (¿a quién?)." },
+      logs: { emoji: "🪓", label: "Leñador", hint: "Troncos talados." },
+      diamonds: { emoji: "💎", label: "Cazadiamantes", hint: "Menas de diamante picadas." },
+      broken_tools: { emoji: "🔨", label: "Manazas", hint: "Herramientas rotas de tanto darles." },
+      player_kills: { emoji: "🗡️", label: "Traidor del clan", hint: "Guerreros caídos a sus manos." },
+      fish: { emoji: "🎣", label: "Pescador", hint: "Peces sacados del agua." },
+      trades: { emoji: "🤝", label: "Usurero", hint: "Tratos cerrados con aldeanos." },
+      breeding: { emoji: "🐄", label: "Granjero", hint: "Animales criados." },
+      swim: { emoji: "🧜", label: "Sirena", hint: "Distancia nadando o caminando bajo el agua." },
+      bells: { emoji: "🔔", label: "Campanero", hint: "Campanas tocadas. Dong." },
+    } satisfies Record<MetricId, { emoji: string; label: string; hint?: string }>,
+  },
+
+  // /cronica
+  cronica: {
+    optionName: "guerrero",
+    optionDescription: "Nombre del guerrero en Minecraft",
+    title: (name: string) => `📜 Crónica de ${name}`,
+    playTime: "⏳ Tiempo en el reino",
+    deaths: "💀 Muertes",
+    killer: (entity: string, n: string) => `Su verdugo: ${entity} (${n})`,
+    sinceDeath: "🛡️ Sin morir",
+    mobKills: "⚔️ Mobs abatidos",
+    prey: (entity: string, n: string) => `Su presa favorita: ${entity} (${n})`,
+    mined: "⛏️ Bloques picados",
+    favouriteBlock: (block: string) => `Su favorito: ${block}`,
+    distance: "🧭 Distancia",
+    advancements: (n: number) => `🏆 Logros (${n})`,
+    noAdvancements: "Aún ninguno. Todo héroe empieza en algún sitio.",
+    unknown: (name: string) => `Skald no conoce a ningún guerrero llamado **${name}**.`,
+    invalidName: "Ese no parece un nombre de guerrero de Minecraft.",
+  },
+
+  /** Cuando no se sabe el nombre de un UUID. */
+  unknownWarrior: (uuid: string) => `Guerrero ${uuid.slice(0, 8)}`,
+
   // Errores
   ravensSilent: "🐦‍⬛ Los cuervos no traen noticias. Inténtalo de nuevo.",
   parseError:
     "📜 Las runas que devuelve el servidor no se dejan leer. Seguramente ha cambiado de versión; queda anotado.",
   wrongGuild: "Skald solo canta en su propio salón.",
+  worldUnavailable: "📜 No encuentro las crónicas del mundo: no puedo leer los ficheros del servidor.",
 
   // Presencia: estado personalizado, se lee tal cual bajo el nombre del bot
   // (sin «Viendo» / «Escuchando» delante), así que cada texto va completo.

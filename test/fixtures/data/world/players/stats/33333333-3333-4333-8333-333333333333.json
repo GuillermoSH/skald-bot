@@ -1,0 +1,21 @@
+{
+  "stats": {
+    "minecraft:custom": {
+      "minecraft:play_time": 36000,
+      "minecraft:deaths": 7,
+      "minecraft:mob_kills": 2,
+      "minecraft:jump": 800,
+      "minecraft:leave_game": 9,
+      "minecraft:time_since_death": 1200,
+      "minecraft:walk_one_cm": 200000,
+      "minecraft:bell_ring": 40
+    },
+    "minecraft:killed": {
+      "minecraft:zombie": 2
+    },
+    "minecraft:used": {
+      "minecraft:egg": 300
+    }
+  },
+  "DataVersion": 4903
+}

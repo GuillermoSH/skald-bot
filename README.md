@@ -12,6 +12,8 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 |---|---|
 | `/reino` | Estado del reino: jugadores, TPS, tiempo por tick, latencia y versión |
 | `/guerreros` | Quién está conectado ahora mismo |
+| `/gestas <categoría>` | Rankings: tiempo jugado, muertes, mobs, distancia… y otros menos serios (pasto de creepers, muertes tontas, lanzahuevos, rage quit…) |
+| `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
 | `/runas` | Versión, cargador y datos técnicos del servidor |
 | `/mapa` | Enlace al mapa web (BlueMap), si está configurado |
 | `/ayuda` | Lista de comandos (solo la ve quien la pide) |
@@ -26,7 +28,7 @@ Además, el bot muestra un estado personalizado según cómo esté el servidor:
 
 ## Diseño y seguridad
 
-- **Solo lectura.** Skald consulta, no administra.
+- **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura.
 - **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
 - **Sin menciones.** Todas las respuestas se envían con `allowedMentions: { parse: [] }`, y el texto que viene del servidor (MOTD, nombres) se escapa.
 - **Configuración validada al arrancar.** Si falta una variable obligatoria, el bot no arranca, y los errores nunca muestran valores (pueden ser secretos).
@@ -38,7 +40,7 @@ src/
   register.ts       registro de comandos slash (se lanza a mano)
   config.ts         variables de entorno validadas con zod
   presence.ts       presencia rotativa
-  core/             ping de estado, cliente RCON y parsers de sus respuestas
+  core/             ping, RCON, lectura del mundo, métricas, nombres y textos
   adapters/         lo específico de cada cargador (vanilla por ahora)
   commands/         un fichero por comando slash
   util/             textos, embeds, escape, logs
@@ -73,6 +75,7 @@ Rellena `.env`:
 | `MC_HOST`, `MC_PORT` | No | Host y puerto del juego (por defecto `minecraft:25565`) |
 | `RCON_HOST`, `RCON_PORT` | No | Host y puerto RCON (por defecto `minecraft:25575`) |
 | `BLUEMAP_URL` | No | Enlace para `/mapa` |
+| `DATA_DIR` | No | Carpeta `data` del servidor (por defecto `/data`, la del contenedor) |
 | `ALERT_CHANNEL_ID` | No | Canal de avisos (próximamente) |
 | `ADMIN_USER_IDS` | No | IDs de administradores, separados por comas |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn` o `error` |
@@ -160,6 +163,14 @@ docker compose -f test/local-server/compose.yaml down -v   # lo borra todo
 
 Para probar el bot contra él, en `.env`: `MC_HOST=127.0.0.1`, `RCON_HOST=127.0.0.1` y `RCON_PASSWORD=skald-local`.
 
+Las estadísticas (`/gestas`, `/cronica`) se pueden probar con los datos sintéticos de `test/fixtures/data` poniendo `DATA_DIR=./test/fixtures/data`.
+
+### Fuentes externas
+
+- **Nombres en español** de logros, mobs y bloques: se descargan al arrancar de los servidores de recursos de Mojang, para la versión del servidor. Si no hay red, se muestran los ids en formato legible.
+- **Nombres de jugador** que ya no están en `usercache.json` (caducan a los 30 días): API pública de perfiles de Mojang.
+- **Cabezas de jugador** en `/cronica`: [mc-heads.net](https://mc-heads.net).
+
 ### Cuando sale una versión nueva de Minecraft
 
 Los parsers de `src/core/parsers.ts` dependen del texto que devuelve el servidor por RCON, que a veces cambia entre versiones. Para comprobarlo, cambia `VERSION` en `test/local-server/compose.yaml`, ejecuta `pnpm smoke` y, si algo ha cambiado, añade las respuestas nuevas a `test/fixtures/`. Si el formato no se reconoce, el bot lo dice en Discord y lo anota en el log en vez de mostrar datos falsos.
@@ -168,7 +179,7 @@ Los parsers de `src/core/parsers.ts` dependen del texto que devuelve el servidor
 
 - [x] Consultas básicas: estado, jugadores, datos técnicos, mapa, presencia
 - [x] Imagen Docker, despliegue junto al servidor (Compose) y actualización automática
-- [ ] Estadísticas y rankings a partir de los ficheros del mundo
+- [x] Estadísticas y rankings a partir de los ficheros del mundo
 - [ ] Avisos en un canal: entradas, salidas, muertes y logros
 - [ ] Estado de las copias de seguridad
 - [ ] Adaptadores para servidores con mods

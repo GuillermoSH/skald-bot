@@ -1,0 +1,27 @@
+{
+  "minecraft:story/root": {
+    "criteria": {
+      "crafting_table": "2026-07-15 18:00:00 +0000"
+    },
+    "done": true
+  },
+  "minecraft:end/elytra": {
+    "criteria": {
+      "elytra": "2026-10-01 20:30:00 +0000"
+    },
+    "done": true
+  },
+  "minecraft:husbandry/breed_an_animal": {
+    "criteria": {
+      "bred": "2026-07-20 12:00:00 +0000"
+    },
+    "done": true
+  },
+  "minecraft:story/enter_the_nether": {
+    "criteria": {
+      "entered_nether": "2026-08-05 21:00:00 +0200"
+    },
+    "done": true
+  },
+  "DataVersion": 4903
+}

@@ -1,0 +1,9 @@
+{
+  "minecraft:story/root": {
+    "criteria": {
+      "crafting_table": "2026-11-01 08:00:00 +0000"
+    },
+    "done": true
+  },
+  "DataVersion": 4903
+}
