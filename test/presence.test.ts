@@ -14,26 +14,22 @@ const online = (players: number): ServerStatus => ({
   latencyMs: 2,
 });
 
+const custom = (state: string) => [{ type: ActivityType.Custom, name: "Custom Status", state }];
+
 describe("choosePresence", () => {
-  it("caído → no molestar, jugando", () => {
+  it("caído → no molestar", () => {
     expect(choosePresence({ online: false })).toEqual({
       status: "dnd",
-      activities: [{ name: "El reino duerme (offline)", type: ActivityType.Playing }],
+      activities: custom("💤 El reino duerme (offline)"),
     });
   });
 
-  it("vacío → ausente, escuchando", () => {
-    expect(choosePresence(online(0))).toEqual({
-      status: "idle",
-      activities: [{ name: "el silencio de las salas", type: ActivityType.Listening }],
-    });
+  it("vacío → ausente", () => {
+    expect(choosePresence(online(0))).toEqual({ status: "idle", activities: custom("🌙 Silencio en las salas") });
   });
 
-  it("con jugadores → en línea, viendo (singular y plural)", () => {
-    expect(choosePresence(online(1)).activities?.[0]?.name).toBe("a 1 guerrero en el reino");
-    expect(choosePresence(online(3))).toEqual({
-      status: "online",
-      activities: [{ name: "a 3 guerreros en el reino", type: ActivityType.Watching }],
-    });
+  it("con jugadores → en línea (singular y plural)", () => {
+    expect(choosePresence(online(1))).toEqual({ status: "online", activities: custom("⚔️ 1 guerrero en el reino") });
+    expect(choosePresence(online(3)).activities?.[0]?.state).toBe("⚔️ 3 guerreros en el reino");
   });
 });

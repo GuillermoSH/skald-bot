@@ -1,4 +1,4 @@
-import { ActivityType, type Client, type PresenceData } from "discord.js";
+import { ActivityType, type ActivitiesOptions, type Client, type PresenceData } from "discord.js";
 import type { Config } from "./config.js";
 import { getServerStatus, type ServerStatus } from "./core/status.js";
 import { log } from "./util/log.js";
@@ -6,24 +6,25 @@ import { texts } from "./util/texts.js";
 
 const INTERVAL_MS = 60_000;
 
+/**
+ * Estado personalizado: Discord muestra `state` tal cual, igual en el perfil
+ * que en la lista de miembros. `name` es obligatorio pero no se ve.
+ */
+function customStatus(text: string): ActivitiesOptions {
+  return { type: ActivityType.Custom, name: "Custom Status", state: text };
+}
+
 /** Presencia al arrancar, antes del primer ping. */
 export const STARTING_PRESENCE: PresenceData = {
   status: "online",
-  activities: [{ name: texts.presence.starting, type: ActivityType.Watching }],
+  activities: [customStatus(texts.presence.starting)],
 };
 
 /** Elige la presencia según el estado del servidor (función pura, se prueba sola). */
 export function choosePresence(status: ServerStatus): PresenceData {
-  if (!status.online) {
-    return { status: "dnd", activities: [{ name: texts.presence.offline, type: ActivityType.Playing }] };
-  }
-  if (status.playersOnline === 0) {
-    return { status: "idle", activities: [{ name: texts.presence.empty, type: ActivityType.Listening }] };
-  }
-  return {
-    status: "online",
-    activities: [{ name: texts.presence.withPlayers(status.playersOnline), type: ActivityType.Watching }],
-  };
+  if (!status.online) return { status: "dnd", activities: [customStatus(texts.presence.offline)] };
+  if (status.playersOnline === 0) return { status: "idle", activities: [customStatus(texts.presence.empty)] };
+  return { status: "online", activities: [customStatus(texts.presence.withPlayers(status.playersOnline))] };
 }
 
 /**
@@ -41,7 +42,7 @@ export function startPresenceLoop(client: Client<true>, config: Config): () => v
     if (key === last) return;
     client.user.setPresence(presence);
     last = key;
-    log.debug(`Presencia: ${presence.status ?? "?"} · ${presence.activities?.[0]?.name ?? ""}`);
+    log.debug(`Presencia: ${presence.status ?? "?"} · ${presence.activities?.[0]?.state ?? ""}`);
   };
 
   const run = () => {

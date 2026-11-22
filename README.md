@@ -16,13 +16,13 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/mapa` | Enlace al mapa web (BlueMap), si está configurado |
 | `/ayuda` | Lista de comandos (solo la ve quien la pide) |
 
-Además, la presencia del bot cambia según el estado del servidor:
+Además, el bot muestra un estado personalizado según cómo esté el servidor:
 
-| Situación | Estado | Actividad |
+| Situación | Estado | Texto |
 |---|---|---|
-| Con jugadores | En línea | Viendo a *n* guerreros en el reino |
-| Vacío | Ausente | Escuchando el silencio de las salas |
-| Caído | No molestar | Jugando a El reino duerme (offline) |
+| Con jugadores | En línea | ⚔️ *n* guerreros en el reino |
+| Vacío | Ausente | 🌙 Silencio en las salas |
+| Caído | No molestar | 💤 El reino duerme (offline) |
 
 ## Diseño y seguridad
 

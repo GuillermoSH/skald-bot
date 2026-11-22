@@ -72,11 +72,12 @@ export const texts = {
     "📜 Las runas que devuelve el servidor no se dejan leer. Seguramente ha cambiado de versión; queda anotado.",
   wrongGuild: "Skald solo canta en su propio salón.",
 
-  // Presencia (lo que se ve bajo el nombre del bot)
+  // Presencia: estado personalizado, se lee tal cual bajo el nombre del bot
+  // (sin «Viendo» / «Escuchando» delante), así que cada texto va completo.
   presence: {
-    starting: "las brasas del reino",
-    withPlayers: (n: number) => `a ${warriors(n)} en el reino`,
-    empty: "el silencio de las salas",
-    offline: "El reino duerme (offline)",
+    starting: "🔥 Vigilando las brasas del reino",
+    withPlayers: (n: number) => `⚔️ ${warriors(n)} en el reino`,
+    empty: "🌙 Silencio en las salas",
+    offline: "💤 El reino duerme (offline)",
   },
 } as const;
