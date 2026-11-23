@@ -198,43 +198,69 @@ export const texts = {
   },
 
   // Mensaje fijo de #runas. Si cambia, Skald edita su mensaje al desplegarse.
+  // Usa Markdown de Discord: # ## ### (cabeceras), -# (subtexto), ``` (bloque de código).
   rules: {
-    title: "📜 Las runas del reino",
-    intro:
-      "Bienvenido al reino, viajero. Aquí se juega, se construye y se muere con honor (o se cae a la lava, que también pasa). Estas son las runas que todos respetamos:",
+    intro: [
+      "# 📜 Las runas del reino",
+      "Bienvenido al reino, viajero. Aquí se juega, se construye y se muere con honor (o se cae a la lava, que también pasa).",
+      "",
+      "Estas son las runas que todos respetamos:",
+    ].join("\n"),
+    numbers: ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"],
     list: [
-      "**Honra a los demás guerreros.** Nada de insultos, acoso ni discriminación.",
-      "**Lo ajeno no se toca.** Nada de griefing ni robos: lo que no es tuyo, se pide.",
-      "**El PvP, solo si los dos aceptan.**",
-      "**Sin trampas.** Nada de hacks, X-ray, duplicaciones ni exploits. Mods de rendimiento y estéticos, sí; si dudas, pregunta al Jarl.",
-      "**Cuida el reino.** Granjas grandes con cabeza, que no hundan el TPS (`/reino` lo chiva).",
-      "**Respeta el espacio.** Construye a una distancia razonable de los demás, salvo que te inviten.",
-      "**En Discord, cada cosa en su canal.** Sin spam ni contenido NSFW.",
-      "**La palabra del Jarl y de sus huscarles es ley.**",
+      { title: "Honra a los demás guerreros", text: "Nada de insultos, acoso ni discriminación." },
+      { title: "Lo ajeno no se toca", text: "Nada de griefing ni robos: lo que no es tuyo, se pide." },
+      { title: "El PvP, solo si los dos aceptan", text: "Nada de emboscadas a quien no quiere pelea." },
+      {
+        title: "Sin trampas",
+        text: "Nada de hacks, X-ray, duplicaciones ni exploits. Mods de rendimiento y estéticos, sí; si dudas, pregunta al Jarl.",
+      },
+      { title: "Cuida el reino", text: "Granjas grandes con cabeza, que no hundan el TPS (`/reino` lo chiva)." },
+      { title: "Respeta el espacio", text: "Construye a una distancia razonable de los demás, salvo que te inviten." },
+      { title: "En Discord, cada cosa en su canal", text: "Sin spam ni contenido NSFW." },
+      { title: "La palabra del Jarl es ley", text: "Y la de sus huscarles también." },
     ],
-    channelsTitle: "🗺️ Los salones del reino",
+    channelsHeading: "## 🗺️ Los salones del reino",
     // `find`: texto que se busca en el nombre del canal para enlazarlo (<#id>).
     // Si no se encuentra (canal renombrado o borrado), sale `label` como texto.
-    channels: [
-      { find: "gjallarhorn", label: "📯┃gjallarhorn", description: "llegadas, boosts y anuncios" },
-      { find: "salón-del-trono", label: "👑┃salón-del-trono", description: "charla general" },
-      { find: "hoguera", label: "🔥 Hoguera del clan", description: "voz" },
-      { find: "crónicas", label: "📖┃crónicas", description: "pregúntale a Skald: `/reino`, `/gestas`, `/cronica`, `/saga`…" },
-      { find: "cuervos", label: "🐦‍⬛┃cuervos", description: "Skald avisa de lo que pasa en el Minecraft" },
-      { find: "la-forja", label: "⚒️┃la-forja", description: "capturas de construcciones" },
-      { find: "hazañas", label: "🎬┃hazañas", description: "clips y momentos épicos" },
+    groups: [
+      {
+        title: "🏰 Asgard",
+        channels: [
+          { find: "runas", label: "📜┃runas", description: "estás aquí" },
+          { find: "gjallarhorn", label: "📯┃gjallarhorn", description: "llegadas, boosts y anuncios" },
+        ],
+      },
+      {
+        title: "🍺 Mjödsal",
+        channels: [
+          { find: "salón-del-trono", label: "👑┃salón-del-trono", description: "charla general" },
+          { find: "hoguera", label: "🔥 Hoguera del clan", description: "voz" },
+        ],
+      },
+      {
+        title: "⚔️ Valhalla",
+        channels: [
+          { find: "crónicas", label: "📖┃crónicas", description: "pregúntale a Skald: `/reino`, `/gestas`, `/cronica`, `/saga`…" },
+          { find: "cuervos", label: "🐦‍⬛┃cuervos", description: "Skald avisa de lo que pasa en el Minecraft" },
+          { find: "la-forja", label: "⚒️┃la-forja", description: "capturas de construcciones" },
+          { find: "hazañas", label: "🎬┃hazañas", description: "clips y momentos épicos" },
+        ],
+      },
     ],
-    joinTitle: "⚔️ Cómo entrar en Valhalla (Minecraft)",
-    join: (opts: { version: string | null; address: string | null; jarl: string | null }) =>
-      [
-        `Minecraft **Java${opts.version ? ` ${opts.version}` : ""}**, sin mods.`,
-        "El reino está protegido tras el Bifröst: para entrar necesitas un túnel de acceso.",
-        opts.jarl ? `Escríbele a ${opts.jarl} y te lo prepara.` : "Escríbele al Jarl y te lo prepara.",
-        opts.address ? `Dirección: \`${opts.address}\`` : null,
-        "Cuando ya juegues, recibirás el rol **⚔️ Einherjar**.",
-      ]
-        .filter(Boolean)
-        .join("\n"),
+    joinHeading: "## ⚔️ Cómo entrar en Valhalla",
+    joinIntro: (version: string | null) =>
+      `Minecraft **Java${version ? ` ${version}` : ""}**, sin mods. El reino está protegido tras el Bifröst, así que hace falta un túnel de acceso:`,
+    // `to` = "a @Fulano" o "al Jarl"
+    joinSteps: (to: string) => [
+      `Pídele el túnel ${to}.`,
+      "Conéctate al túnel.",
+      "En Minecraft: **Multijugador → Añadir servidor**, con la dirección de abajo.",
+      "¡A jugar! Recibirás el rol **⚔️ Einherjar**.",
+    ],
+    addressHeading: "### 📍 Dirección del reino",
+    jarlFallback: "al Jarl",
+    // También sirve para reconocer el mensaje de Skald y editarlo: no cambiar a la ligera.
     footer: "Skald · cantor del reino · Este mensaje se actualiza solo",
   },
 

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { ChannelType } from "discord.js";
+import { describe, expect, it } from "vitest";
 import { buildRulesEmbeds, matchGuideChannels } from "../src/rules.js";
 
 const total = (embeds: ReturnType<typeof buildRulesEmbeds>) =>
@@ -8,30 +8,43 @@ const total = (embeds: ReturnType<typeof buildRulesEmbeds>) =>
     return n + (j.title?.length ?? 0) + (j.description?.length ?? 0) + (j.footer?.text.length ?? 0);
   }, 0);
 
+const text = (embeds: ReturnType<typeof buildRulesEmbeds>) => embeds.map((e) => e.toJSON().description ?? "").join("\n");
+
 describe("buildRulesEmbeds", () => {
-  it("incluye dirección, versión y la mención del Jarl si los hay", () => {
-    const [, , join] = buildRulesEmbeds({ version: "26.2", address: "reino.example:25565", jarlId: "111111111111111111" });
-    const text = join?.toJSON().description ?? "";
-    expect(text).toContain("Java 26.2");
-    expect(text).toContain("`reino.example:25565`");
-    expect(text).toContain("<@111111111111111111>");
+  it("la imagen va sola, como portada, en el primer embed", () => {
+    const [cover, rules] = buildRulesEmbeds({ version: null, address: null, jarlId: null, imageUrl: "attachment://runas.png" });
+    expect(cover?.toJSON().image?.url).toBe("attachment://runas.png");
+    expect(cover?.toJSON().description).toBeUndefined();
+    expect(rules?.toJSON().description).toMatch(/^# 📜 Las runas del reino/);
+  });
+
+  it("cada norma tiene su cabecera con número", () => {
+    const all = text(buildRulesEmbeds({ version: null, address: null, jarlId: null }));
+    expect(all).toContain("### 1️⃣ Honra a los demás guerreros\nNada de insultos");
+    expect(all).toContain("### 8️⃣ La palabra del Jarl es ley");
+  });
+
+  it("cómo entrar: pasos numerados, versión, Jarl y dirección en bloque de código", () => {
+    const all = text(buildRulesEmbeds({ version: "26.2", address: "reino.example:25565", jarlId: "111111111111111111" }));
+    expect(all).toContain("Java 26.2");
+    expect(all).toContain("1. Pídele el túnel a <@111111111111111111>.");
+    expect(all).toContain("### 📍 Dirección del reino\n```\nreino.example:25565\n```");
   });
 
   it("sin dirección ni Jarl configurados, no deja huecos", () => {
-    const [, , join] = buildRulesEmbeds({ version: null, address: null, jarlId: null });
-    const text = join?.toJSON().description ?? "";
-    expect(text).not.toContain("Dirección");
-    expect(text).not.toContain("null");
-    expect(text).toContain("Escríbele al Jarl");
-  });
-
-  it("las normas van numeradas", () => {
-    const [main] = buildRulesEmbeds({ version: null, address: null, jarlId: null });
-    expect(main?.toJSON().description).toMatch(/\n1\. .*\n2\. /);
+    const all = text(buildRulesEmbeds({ version: null, address: null, jarlId: null }));
+    expect(all).not.toContain("Dirección");
+    expect(all).not.toContain("null");
+    expect(all).toContain("Pídele el túnel al Jarl.");
   });
 
   it("cabe en los límites de Discord (4096 por descripción, 6000 por mensaje)", () => {
-    const embeds = buildRulesEmbeds({ version: "26.2", address: "x".repeat(100), jarlId: "111111111111111111" });
+    const embeds = buildRulesEmbeds({
+      version: "26.2",
+      address: "x".repeat(100),
+      jarlId: "111111111111111111",
+      imageUrl: "attachment://runas.png",
+    });
     for (const e of embeds) expect(e.toJSON().description?.length ?? 0).toBeLessThanOrEqual(4096);
     expect(total(embeds)).toBeLessThanOrEqual(6000);
   });
@@ -52,11 +65,11 @@ describe("guía de canales", () => {
     expect(ids.has("cuervos")).toBe(false);
   });
 
-  it("enlaza los encontrados y deja en texto los que no", () => {
-    const [, channels] = buildRulesEmbeds({ version: null, address: null, jarlId: null, channelIds: matchGuideChannels(guild) });
-    const text = channels?.toJSON().description ?? "";
-    expect(text).toContain("• <#1> · llegadas");
-    expect(text).toContain("• <#2> · voz");
-    expect(text).toContain("• 🐦‍⬛┃cuervos · Skald avisa");
+  it("agrupa por categoría, enlaza los encontrados y deja en texto los que no", () => {
+    const all = text(buildRulesEmbeds({ version: null, address: null, jarlId: null, channelIds: matchGuideChannels(guild) }));
+    expect(all).toContain("### 🏰 Asgard");
+    expect(all).toContain("<#1> · llegadas");
+    expect(all).toContain("<#2> · voz");
+    expect(all).toContain("🐦‍⬛┃cuervos · Skald avisa");
   });
 });

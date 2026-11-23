@@ -1,8 +1,11 @@
 /**
  * Mensaje fijo de las runas (normas, canales, cómo entrar). Skald lo publica
  * una vez y, si el texto cambia en texts.ts, edita su propio mensaje en vez de
- * publicar otro. Lo reconoce por el título: si se cambia el título, publicará
- * uno nuevo (y el viejo habrá que borrarlo a mano).
+ * publicar otro. Lo reconoce por el pie (`texts.rules.footer`): si se cambia el
+ * pie, publicará uno nuevo (y el viejo habrá que borrarlo a mano).
+ *
+ * Jerarquía visual con Markdown de Discord dentro de los embeds: portada con la
+ * imagen, cabeceras (# ## ###), pasos numerados y la dirección en un bloque de código.
  */
 import { ChannelType, EmbedBuilder, type APIEmbed, type Client } from "discord.js";
 import { asset } from "./util/assets.js";
@@ -18,7 +21,18 @@ export interface RulesOptions {
   jarlId: string | null;
   /** `find` de cada canal de la guía → ID del canal encontrado (para enlazarlo). */
   channelIds?: ReadonlyMap<string, string>;
+  /** `attachment://…` de la imagen de portada. */
+  imageUrl?: string;
 }
+
+interface GuideChannel {
+  find: string;
+  label: string;
+  description: string;
+}
+
+const guideChannels = (): GuideChannel[] =>
+  texts.rules.groups.flatMap((g): readonly GuideChannel[] => g.channels);
 
 /**
  * Busca en el servidor cada canal de la guía por su nombre (sin distinguir
@@ -29,43 +43,45 @@ export function matchGuideChannels(
 ): Map<string, string> {
   const found = new Map<string, string>();
   const candidates = channels.filter((c) => c.type !== ChannelType.GuildCategory);
-  for (const { find } of texts.rules.channels) {
+  for (const { find } of guideChannels()) {
     const match = candidates.find((c) => c.name.toLowerCase().includes(find.toLowerCase()));
     if (match) found.set(find, match.id);
   }
   return found;
 }
 
-export function buildRulesEmbeds(options: RulesOptions & { imageUrl?: string }): EmbedBuilder[] {
+export function buildRulesEmbeds(options: RulesOptions): EmbedBuilder[] {
   const r = texts.rules;
-  const header = new EmbedBuilder().setColor(COLORS.main).setTitle(r.title);
-  if (options.imageUrl) header.setImage(options.imageUrl);
-  return [
-    header
-      .setDescription(`${r.intro}\n\n${r.list.map((rule, i) => `${i + 1}. ${rule}`).join("\n")}`),
-    new EmbedBuilder()
-      .setColor(COLORS.main)
-      .setTitle(r.channelsTitle)
-      .setDescription(
-        r.channels
-          .map((c) => {
-            const id = options.channelIds?.get(c.find);
-            return `• ${id ? `<#${id}>` : c.label} · ${c.description}`;
-          })
-          .join("\n"),
-      ),
-    new EmbedBuilder()
-      .setColor(COLORS.ok)
-      .setTitle(r.joinTitle)
-      .setDescription(
-        r.join({
-          version: options.version,
-          address: options.address,
-          jarl: options.jarlId ? `<@${options.jarlId}>` : null,
-        }),
-      )
-      .setFooter({ text: r.footer }),
+  const embeds: EmbedBuilder[] = [];
+
+  // Portada: solo la imagen, arriba del todo.
+  if (options.imageUrl) embeds.push(new EmbedBuilder().setColor(COLORS.main).setImage(options.imageUrl));
+
+  // Normas: cada una con su cabecera y la explicación debajo.
+  const rules = r.list.map((rule, i) => `### ${r.numbers[i] ?? `${i + 1}.`} ${rule.title}\n${rule.text}`);
+  embeds.push(new EmbedBuilder().setColor(COLORS.main).setDescription([r.intro, ...rules].join("\n")));
+
+  // Salones, agrupados por categoría.
+  const groups = r.groups.map((group) => {
+    const lines = group.channels.map((c) => {
+      const id = options.channelIds?.get(c.find);
+      return `${id ? `<#${id}>` : c.label} · ${c.description}`;
+    });
+    return `### ${group.title}\n${lines.join("\n")}`;
+  });
+  embeds.push(new EmbedBuilder().setColor(COLORS.main).setDescription([r.channelsHeading, ...groups].join("\n")));
+
+  // Cómo entrar: pasos numerados y la dirección destacada.
+  const toJarl = options.jarlId ? `a <@${options.jarlId}>` : r.jarlFallback;
+  const join = [
+    r.joinHeading,
+    r.joinIntro(options.version),
+    "",
+    ...r.joinSteps(toJarl).map((step, i) => `${i + 1}. ${step}`),
+    ...(options.address ? [r.addressHeading, "```", options.address, "```"] : []),
   ];
+  embeds.push(new EmbedBuilder().setColor(COLORS.ok).setDescription(join.join("\n")).setFooter({ text: r.footer }));
+  return embeds;
 }
 
 /** Lo que importa para saber si el mensaje publicado está al día. */
@@ -92,7 +108,9 @@ export async function publishRules(client: Client<true>, channelId: string, opti
   const guild = channel.isDMBased() ? null : channel.guild;
   const guildChannels = guild ? [...(await guild.channels.fetch()).values()].filter((c) => c !== null) : [];
   const channelIds = matchGuideChannels(guildChannels);
-  const missing = texts.rules.channels.filter((c) => !channelIds.has(c.find)).map((c) => c.label);
+  const missing = guideChannels()
+    .filter((c) => !channelIds.has(c.find))
+    .map((c) => c.label);
   if (missing.length > 0) log.warn(`Runas: canales sin enlace (no encontrados por nombre): ${missing.join(", ")}`);
 
   const image = asset("runas.png");
@@ -100,7 +118,10 @@ export async function publishRules(client: Client<true>, channelId: string, opti
   // `attachments: []` al editar sustituye la imagen anterior en vez de acumularlas.
   const payload = { embeds, files: image ? [image.file] : [], attachments: [], allowedMentions: { parse: [] } };
   const recent = await channel.messages.fetch({ limit: 50 });
-  const existing = recent.find((m) => m.author.id === client.user.id && m.embeds[0]?.title === texts.rules.title);
+  // Se reconoce por el pie, común a la versión antigua y a la nueva del mensaje.
+  const existing = recent.find(
+    (m) => m.author.id === client.user.id && m.embeds.some((e) => e.footer?.text === texts.rules.footer),
+  );
 
   if (!existing) {
     await channel.send(payload);
