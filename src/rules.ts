@@ -4,7 +4,7 @@
  * publicar otro. Lo reconoce por el título: si se cambia el título, publicará
  * uno nuevo (y el viejo habrá que borrarlo a mano).
  */
-import { EmbedBuilder, type APIEmbed, type Client } from "discord.js";
+import { ChannelType, EmbedBuilder, type APIEmbed, type Client } from "discord.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { COLORS } from "./util/embeds.js";
 import { log } from "./util/log.js";
@@ -15,6 +15,24 @@ export interface RulesOptions {
   address: string | null;
   /** ID de Discord del Jarl (se menciona, sin notificar). */
   jarlId: string | null;
+  /** `find` de cada canal de la guía → ID del canal encontrado (para enlazarlo). */
+  channelIds?: ReadonlyMap<string, string>;
+}
+
+/**
+ * Busca en el servidor cada canal de la guía por su nombre (sin distinguir
+ * mayúsculas). Los que no aparecen se quedan sin enlace.
+ */
+export function matchGuideChannels(
+  channels: readonly { id: string; name: string; type: ChannelType }[],
+): Map<string, string> {
+  const found = new Map<string, string>();
+  const candidates = channels.filter((c) => c.type !== ChannelType.GuildCategory);
+  for (const { find } of texts.rules.channels) {
+    const match = candidates.find((c) => c.name.toLowerCase().includes(find.toLowerCase()));
+    if (match) found.set(find, match.id);
+  }
+  return found;
 }
 
 export function buildRulesEmbeds(options: RulesOptions): EmbedBuilder[] {
@@ -27,7 +45,14 @@ export function buildRulesEmbeds(options: RulesOptions): EmbedBuilder[] {
     new EmbedBuilder()
       .setColor(COLORS.main)
       .setTitle(r.channelsTitle)
-      .setDescription(r.channels.map((c) => `• ${c}`).join("\n")),
+      .setDescription(
+        r.channels
+          .map((c) => {
+            const id = options.channelIds?.get(c.find);
+            return `• ${id ? `<#${id}>` : c.label} · ${c.description}`;
+          })
+          .join("\n"),
+      ),
     new EmbedBuilder()
       .setColor(COLORS.ok)
       .setTitle(r.joinTitle)
@@ -58,7 +83,13 @@ export async function publishRules(client: Client<true>, channelId: string, opti
   ]);
   if (!channel) return;
 
-  const embeds = buildRulesEmbeds(options);
+  const guild = channel.isDMBased() ? null : channel.guild;
+  const guildChannels = guild ? [...(await guild.channels.fetch()).values()].filter((c) => c !== null) : [];
+  const channelIds = matchGuideChannels(guildChannels);
+  const missing = texts.rules.channels.filter((c) => !channelIds.has(c.find)).map((c) => c.label);
+  if (missing.length > 0) log.warn(`Runas: canales sin enlace (no encontrados por nombre): ${missing.join(", ")}`);
+
+  const embeds = buildRulesEmbeds({ ...options, channelIds });
   const payload = { embeds, allowedMentions: { parse: [] } };
   const recent = await channel.messages.fetch({ limit: 50 });
   const existing = recent.find((m) => m.author.id === client.user.id && m.embeds[0]?.title === texts.rules.title);

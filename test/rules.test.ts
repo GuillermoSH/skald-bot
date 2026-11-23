@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildRulesEmbeds } from "../src/rules.js";
+import { ChannelType } from "discord.js";
+import { buildRulesEmbeds, matchGuideChannels } from "../src/rules.js";
 
 const total = (embeds: ReturnType<typeof buildRulesEmbeds>) =>
   embeds.reduce((n, e) => {
@@ -33,5 +34,29 @@ describe("buildRulesEmbeds", () => {
     const embeds = buildRulesEmbeds({ version: "26.2", address: "x".repeat(100), jarlId: "111111111111111111" });
     for (const e of embeds) expect(e.toJSON().description?.length ?? 0).toBeLessThanOrEqual(4096);
     expect(total(embeds)).toBeLessThanOrEqual(6000);
+  });
+});
+
+describe("guía de canales", () => {
+  const guild = [
+    { id: "1", name: "📯┃gjallarhorn", type: ChannelType.GuildText },
+    { id: "2", name: "🔥 Hoguera del clan", type: ChannelType.GuildVoice },
+    { id: "3", name: "📖┃crónicas", type: ChannelType.GuildText },
+    { id: "9", name: "⚔️ VALHALLA cuervos", type: ChannelType.GuildCategory },
+  ];
+
+  it("encuentra los canales por nombre (no las categorías)", () => {
+    const ids = matchGuideChannels(guild);
+    expect(ids.get("gjallarhorn")).toBe("1");
+    expect(ids.get("hoguera")).toBe("2");
+    expect(ids.has("cuervos")).toBe(false);
+  });
+
+  it("enlaza los encontrados y deja en texto los que no", () => {
+    const [, channels] = buildRulesEmbeds({ version: null, address: null, jarlId: null, channelIds: matchGuideChannels(guild) });
+    const text = channels?.toJSON().description ?? "";
+    expect(text).toContain("• <#1> · llegadas");
+    expect(text).toContain("• <#2> · voz");
+    expect(text).toContain("• 🐦‍⬛┃cuervos · Skald avisa");
   });
 });

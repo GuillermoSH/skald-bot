@@ -199,14 +199,16 @@ export const texts = {
       "**La palabra del Jarl y de sus huscarles es ley.**",
     ],
     channelsTitle: "🗺️ Los salones del reino",
+    // `find`: texto que se busca en el nombre del canal para enlazarlo (<#id>).
+    // Si no se encuentra (canal renombrado o borrado), sale `label` como texto.
     channels: [
-      "📯┃gjallarhorn · llegadas, boosts y anuncios",
-      "👑┃salón-del-trono · charla general",
-      "🔥 Hoguera del clan · voz",
-      "📖┃crónicas · pregúntale a Skald: `/reino`, `/gestas`, `/cronica`, `/saga`…",
-      "🐦‍⬛┃cuervos · Skald avisa de lo que pasa en el Minecraft",
-      "⚒️┃la-forja · capturas de construcciones",
-      "🎬┃hazañas · clips y momentos épicos",
+      { find: "gjallarhorn", label: "📯┃gjallarhorn", description: "llegadas, boosts y anuncios" },
+      { find: "salón-del-trono", label: "👑┃salón-del-trono", description: "charla general" },
+      { find: "hoguera", label: "🔥 Hoguera del clan", description: "voz" },
+      { find: "crónicas", label: "📖┃crónicas", description: "pregúntale a Skald: `/reino`, `/gestas`, `/cronica`, `/saga`…" },
+      { find: "cuervos", label: "🐦‍⬛┃cuervos", description: "Skald avisa de lo que pasa en el Minecraft" },
+      { find: "la-forja", label: "⚒️┃la-forja", description: "capturas de construcciones" },
+      { find: "hazañas", label: "🎬┃hazañas", description: "clips y momentos épicos" },
     ],
     joinTitle: "⚔️ Cómo entrar en Valhalla (Minecraft)",
     join: (opts: { version: string | null; address: string | null; jarl: string | null }) =>
