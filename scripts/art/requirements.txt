@@ -1,0 +1,2 @@
+# Solo para generar las imágenes en pixel art (pnpm art). No va en la imagen Docker.
+pillow==13.0.0

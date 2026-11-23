@@ -1,5 +1,7 @@
 # --- Dependencias y compilación ---
 node_modules/
+.venv/
+__pycache__/
 dist/
 coverage/
 *.tsbuildinfo

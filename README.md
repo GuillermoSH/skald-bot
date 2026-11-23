@@ -198,9 +198,11 @@ Las estadísticas (`/gestas`, `/cronica`) se pueden probar con los datos sintét
 
 ### Imágenes
 
-Las imágenes en pixel art de bienvenida, despedida, boosts y normas son diseño propio y se generan con código, sin dependencias. Están en `scripts/art/`, con un codificador PNG y otro GIF propios. Para regenerarlas tras retocar una escena:
+Las imágenes en pixel art de bienvenida, despedida, boosts y normas son diseño propio, dibujadas por código con Pillow (`scripts/art/generate.py`). Solo hace falta para regenerarlas; el bot no usa Python:
 
 ```bash
+python3 -m venv .venv
+.venv/bin/pip install -r scripts/art/requirements.txt
 pnpm art   # escribe assets/*.gif y assets/runas.png
 ```
 
