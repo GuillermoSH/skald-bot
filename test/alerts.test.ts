@@ -17,14 +17,16 @@ const death = (player: string, combat: boolean): LogEvent => ({
 
 function setup(enabled: readonly AlertEventType[] = ALERT_EVENT_TYPES) {
   const sent: string[][] = [];
-  const queue = new AlertQueue(
-    (lines) => {
-      sent.push(lines);
-      return Promise.resolve();
-    },
-    new Set(enabled),
-    { batchMs: 1000, reconnectMs: 5000, maxMessagesPerMinute: 2, maxLinesPerMessage: 3 },
-  );
+  const send = (lines: string[]) => {
+    sent.push(lines);
+    return Promise.resolve();
+  };
+  const queue = new AlertQueue(new Map(enabled.map((t) => [t, send])), {
+    batchMs: 1000,
+    reconnectMs: 5000,
+    maxMessagesPerMinute: 2,
+    maxLinesPerMessage: 3,
+  });
   return { sent, queue };
 }
 
@@ -82,6 +84,43 @@ describe("AlertQueue", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(sent.flat()).toHaveLength(1);
     expect(sent.flat()[0]).toContain("Ragnar");
+  });
+});
+
+describe("un canal por tipo de aviso", () => {
+  it("cada tipo va a su canal, y la reconexión se detecta aunque entrada y salida vayan a canales distintos", async () => {
+    const joins: string[][] = [];
+    const deaths: string[][] = [];
+    const leaves: string[][] = [];
+    const to = (box: string[][]) => (lines: string[]) => {
+      box.push(lines);
+      return Promise.resolve();
+    };
+    const queue = new AlertQueue(
+      new Map<AlertEventType, (lines: string[]) => Promise<void>>([
+        ["join", to(joins)],
+        ["leave", to(leaves)],
+        ["death", to(deaths)],
+      ]),
+      { batchMs: 1000, reconnectMs: 5000 },
+    );
+    queue.push(join("Ragnar"));
+    queue.push(death("Ragnar", true));
+    queue.push(leave("Lagertha"));
+    await vi.advanceTimersByTimeAsync(1000);
+    queue.push(join("Lagertha")); // vuelve enseguida
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(joins.flat()).toHaveLength(1);
+    expect(deaths.flat()).toHaveLength(1);
+    expect(leaves).toEqual([]);
+    queue.dispose();
+  });
+
+  it("los tipos sin canal no se avisan", async () => {
+    const { sent, queue } = setup(["death"]);
+    queue.push({ type: "server_start", at });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(sent).toEqual([]);
   });
 });
 

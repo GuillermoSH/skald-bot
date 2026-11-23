@@ -1,12 +1,12 @@
 /**
- * Avisos de eventos del log en un canal de Discord, con anti-spam:
+ * Avisos de eventos del log en Discord (un canal por tipo, o uno para todos), con anti-spam:
  * - Se agrupan en ventanas de unos segundos (varias líneas por mensaje).
  * - Máximo de mensajes por minuto; lo que no cabe se cuenta y se resume.
  * - Salir y volver a entrar en poco tiempo no genera avisos.
  * - Al apagarse el servidor, un único aviso en vez de una salida por jugador.
  */
 import type { Client } from "discord.js";
-import type { AlertEventType } from "./config.js";
+import type { AlertEventType, Config } from "./config.js";
 import type { LogEvent } from "./core/logwatch.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { baseEmbed } from "./util/embeds.js";
@@ -72,65 +72,22 @@ export class AlertFormatter {
   }
 }
 
-export class AlertQueue {
-  private readonly options: AlertQueueOptions;
-  private readonly formatter = new AlertFormatter();
+export type AlertSender = (lines: string[]) => Promise<void>;
+
+/** Cola de un canal: agrupa líneas en mensajes y respeta el límite por minuto. */
+class ChannelBatcher {
   private pending: string[] = [];
   private dropped = 0;
   private flushTimer: NodeJS.Timeout | null = null;
   private readonly sentAt: number[] = [];
-  private readonly heldLeaves = new Map<string, NodeJS.Timeout>();
 
   constructor(
-    private readonly send: (lines: string[]) => Promise<void>,
-    private readonly enabled: ReadonlySet<AlertEventType>,
-    options: Partial<AlertQueueOptions> = {},
-    private readonly onError: (error: unknown) => void = () => undefined,
-  ) {
-    this.options = { ...DEFAULTS, ...options };
-  }
+    private readonly send: AlertSender,
+    private readonly options: AlertQueueOptions,
+    private readonly onError: (error: unknown) => void,
+  ) {}
 
-  push(event: LogEvent): void {
-    if (event.type === "server_stop") {
-      // Las salidas que llegan con la parada no se avisan una a una.
-      for (const timer of this.heldLeaves.values()) clearTimeout(timer);
-      this.heldLeaves.clear();
-    }
-
-    if (event.type === "leave") {
-      if (!this.enabled.has("leave")) return;
-      // Se retiene un rato: si vuelve enseguida, no se avisa de nada.
-      clearTimeout(this.heldLeaves.get(event.player));
-      this.heldLeaves.set(
-        event.player,
-        setTimeout(() => {
-          this.heldLeaves.delete(event.player);
-          this.enqueue(this.formatter.format(event));
-        }, this.options.reconnectMs),
-      );
-      return;
-    }
-
-    if (event.type === "join") {
-      const held = this.heldLeaves.get(event.player);
-      if (held) {
-        clearTimeout(held);
-        this.heldLeaves.delete(event.player);
-        return; // Reconexión: ni salida ni entrada.
-      }
-    }
-
-    if (this.enabled.has(alertTypeOf(event))) this.enqueue(this.formatter.format(event));
-  }
-
-  /** Para pruebas y cierre ordenado. */
-  dispose(): void {
-    if (this.flushTimer) clearTimeout(this.flushTimer);
-    for (const timer of this.heldLeaves.values()) clearTimeout(timer);
-    this.heldLeaves.clear();
-  }
-
-  private enqueue(line: string): void {
+  enqueue(line: string): void {
     this.pending.push(line);
     if (this.pending.length > this.options.maxPending) {
       const excess = this.pending.length - this.options.maxPending;
@@ -138,6 +95,10 @@ export class AlertQueue {
       this.dropped += excess;
     }
     this.schedule(this.options.batchMs);
+  }
+
+  dispose(): void {
+    if (this.flushTimer) clearTimeout(this.flushTimer);
   }
 
   private schedule(delayMs: number): void {
@@ -173,15 +134,118 @@ export class AlertQueue {
   }
 }
 
+/**
+ * Reparte los eventos del log entre canales. `routes` dice a qué canal va cada
+ * tipo de aviso (los que no están, no se avisan). Las reconexiones rápidas y la
+ * parada del servidor se resuelven aquí, antes de repartir, para que funcionen
+ * aunque entradas y salidas vayan a canales distintos.
+ */
+export class AlertQueue {
+  private readonly options: AlertQueueOptions;
+  private readonly formatter = new AlertFormatter();
+  private readonly heldLeaves = new Map<string, NodeJS.Timeout>();
+  /** Una cola por canal (mismo `AlertSender` = mismo canal = misma cola). */
+  private readonly batchers = new Map<AlertSender, ChannelBatcher>();
+
+  constructor(
+    private readonly routes: ReadonlyMap<AlertEventType, AlertSender>,
+    options: Partial<AlertQueueOptions> = {},
+    private readonly onError: (error: unknown) => void = () => undefined,
+  ) {
+    this.options = { ...DEFAULTS, ...options };
+  }
+
+  push(event: LogEvent): void {
+    if (event.type === "server_stop") {
+      // Las salidas que llegan con la parada no se avisan una a una.
+      for (const timer of this.heldLeaves.values()) clearTimeout(timer);
+      this.heldLeaves.clear();
+    }
+
+    if (event.type === "leave") {
+      if (!this.routes.has("leave")) return;
+      // Se retiene un rato: si vuelve enseguida, no se avisa de nada.
+      clearTimeout(this.heldLeaves.get(event.player));
+      this.heldLeaves.set(
+        event.player,
+        setTimeout(() => {
+          this.heldLeaves.delete(event.player);
+          this.dispatch(event);
+        }, this.options.reconnectMs),
+      );
+      return;
+    }
+
+    if (event.type === "join") {
+      const held = this.heldLeaves.get(event.player);
+      if (held) {
+        clearTimeout(held);
+        this.heldLeaves.delete(event.player);
+        return; // Reconexión: ni salida ni entrada.
+      }
+    }
+
+    this.dispatch(event);
+  }
+
+  /** Para pruebas y cierre ordenado. */
+  dispose(): void {
+    for (const batcher of this.batchers.values()) batcher.dispose();
+    for (const timer of this.heldLeaves.values()) clearTimeout(timer);
+    this.heldLeaves.clear();
+  }
+
+  private dispatch(event: LogEvent): void {
+    const send = this.routes.get(alertTypeOf(event));
+    if (!send) return;
+    let batcher = this.batchers.get(send);
+    if (!batcher) {
+      batcher = new ChannelBatcher(send, this.options, this.onError);
+      this.batchers.set(send, batcher);
+    }
+    batcher.enqueue(this.formatter.format(event));
+  }
+}
+
 /** Prepara el envío al canal de avisos; null si no se puede escribir en él. */
-export async function createChannelSender(
-  client: Client<true>,
-  channelId: string,
-): Promise<((lines: string[]) => Promise<void>) | null> {
+export async function createChannelSender(client: Client<true>, channelId: string): Promise<AlertSender | null> {
   const channel = await fetchSendableChannel(client, channelId, "avisos");
   if (!channel) return null;
-  log.info(`Avisos activados en el canal ${channelId}`);
   return async (lines) => {
     await channel.send({ embeds: [baseEmbed().setDescription(lines.join("\n"))], allowedMentions: { parse: [] } });
   };
+}
+
+/**
+ * Canal de cada tipo de aviso: el específico (`ALERT_CHANNEL_<TIPO>`) o el
+ * general (`ALERT_CHANNEL_ID`). Solo los tipos activados en `ALERT_EVENTS`.
+ */
+export function alertChannelFor(config: Config): Map<AlertEventType, string> {
+  const specific: Record<AlertEventType, string | undefined> = {
+    join: config.ALERT_CHANNEL_JOIN,
+    leave: config.ALERT_CHANNEL_LEAVE,
+    death: config.ALERT_CHANNEL_DEATH,
+    advancement: config.ALERT_CHANNEL_ADVANCEMENT,
+    server: config.ALERT_CHANNEL_SERVER,
+  };
+  const out = new Map<AlertEventType, string>();
+  for (const type of config.ALERT_EVENTS) {
+    const channel = specific[type] ?? config.ALERT_CHANNEL_ID;
+    if (channel) out.set(type, channel);
+  }
+  return out;
+}
+
+/** Abre cada canal una sola vez y monta las rutas tipo → envío. */
+export async function buildAlertRoutes(client: Client<true>, config: Config): Promise<Map<AlertEventType, AlertSender>> {
+  const routes = new Map<AlertEventType, AlertSender>();
+  const senders = new Map<string, AlertSender | null>();
+  for (const [type, channelId] of alertChannelFor(config)) {
+    if (!senders.has(channelId)) senders.set(channelId, await createChannelSender(client, channelId));
+    const send = senders.get(channelId);
+    if (send) routes.set(type, send);
+  }
+  const summary = [...alertChannelFor(config)].map(([type, id]) => `${type}→${id}`).join(", ");
+  if (routes.size > 0) log.info(`Avisos activados: ${summary}`);
+  return routes;
 }

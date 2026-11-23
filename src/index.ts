@@ -7,8 +7,9 @@ import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
 } from "discord.js";
-import { AlertQueue, createChannelSender } from "./alerts.js";
+import { AlertQueue, buildAlertRoutes } from "./alerts.js";
 import { BackupWatcher } from "./backup-watch.js";
+import { isCommandChannelAllowed } from "./commands/guard.js";
 import { commandsByName } from "./commands/index.js";
 import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
@@ -123,13 +124,11 @@ function main(): void {
   // Textos primero (para reconocer muertes y traducir), luego avisos y log.
   const startLogWatch = async (ready: Client<true>) => {
     await ctx.lang.ready();
-    if (config.ALERT_CHANNEL_ID) {
-      const send = await createChannelSender(ready, config.ALERT_CHANNEL_ID);
-      if (send) {
-        alerts = new AlertQueue(send, new Set(config.ALERT_EVENTS), {}, (error) => {
-          log.warn(`No se pudo enviar un aviso: ${error instanceof Error ? error.message : String(error)}`);
-        });
-      }
+    const routes = await buildAlertRoutes(ready, config);
+    if (routes.size > 0) {
+      alerts = new AlertQueue(routes, {}, (error) => {
+        log.warn(`No se pudo enviar un aviso: ${error instanceof Error ? error.message : String(error)}`);
+      });
     }
     try {
       await watcher.start();
@@ -172,6 +171,14 @@ async function handleCommand(interaction: ChatInputCommandInteraction, ctx: Comm
 
   if (interaction.guildId !== ctx.config.DISCORD_GUILD_ID) {
     await interaction.reply({ content: texts.wrongGuild, flags: MessageFlags.Ephemeral }).catch(() => undefined);
+    return;
+  }
+
+  // Comandos solo en sus canales (los que solo ve quien los usa, como /ayuda, en cualquiera).
+  const parentId = interaction.channel?.isThread() ? interaction.channel.parentId : null;
+  if (!command.ephemeral && !isCommandChannelAllowed(ctx.config, interaction.channelId, parentId)) {
+    const where = ctx.config.COMMAND_CHANNEL_IDS.map((id) => `<#${id}>`).join(", ");
+    await interaction.reply({ content: texts.wrongChannel(where), flags: MessageFlags.Ephemeral }).catch(() => undefined);
     return;
   }
 

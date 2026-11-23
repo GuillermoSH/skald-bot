@@ -301,6 +301,7 @@ export const texts = {
   parseError:
     "📜 Las runas que devuelve el servidor no se dejan leer. Seguramente ha cambiado de versión; queda anotado.",
   wrongGuild: "Skald solo canta en su propio salón.",
+  wrongChannel: (where: string) => `🎶 Aquí no canto, guerrero. Búscame en ${where}.`,
   worldUnavailable: "📜 No encuentro las crónicas del mundo: no puedo leer los ficheros del servidor.",
   backupsUnavailable: "🐦‍⬛ Muninn no encuentra la carpeta de las memorias (copias de seguridad).",
 

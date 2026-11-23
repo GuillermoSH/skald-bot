@@ -37,7 +37,7 @@ Si se configura `ALERT_CHANNEL_ID`, Skald sigue el log del servidor y avisa en e
 - 🏆 logros, 🎖️ desafíos y 🎯 metas, con su nombre en español,
 - 🔥 arranque y 🌑 parada del servidor.
 
-Los avisos se agrupan y tienen un límite por minuto. `ALERT_EVENTS` elige qué tipos se avisan. El bot necesita en ese canal los permisos *Ver canal*, *Enviar mensajes* e *Insertar enlaces*; si falta alguno, lo dice en su log al arrancar.
+Los avisos se agrupan y tienen un límite por minuto. `ALERT_EVENTS` elige qué tipos se avisan, y cada tipo puede ir a su propio canal (`ALERT_CHANNEL_JOIN`, `_LEAVE`, `_DEATH`, `_ADVANCEMENT`, `_SERVER`); los que no tengan canal propio van a `ALERT_CHANNEL_ID`. El bot necesita en ese canal los permisos *Ver canal*, *Enviar mensajes* e *Insertar enlaces*; si falta alguno, lo dice en su log al arrancar.
 
 Las muertes se reconocen con las plantillas oficiales del juego (`death.*`), que Skald lee del jar del servidor (`versions/<versión>/server-<versión>.jar`, en solo lectura), así que cubre todas las causas de muerte de la versión instalada.
 
@@ -63,6 +63,10 @@ Skald también hace de heraldo, sin bots de terceros:
 - 📜 **Mensaje de normas** (las «runas») en su canal: normas, guía de canales y cómo entrar al servidor de Minecraft. Si el texto cambia en `src/util/texts.ts`, al desplegar Skald **edita su propio mensaje** en vez de publicar otro.
 
 Necesita el *Server Members Intent* activado en el portal de desarrolladores (pestaña *Bot*). Skald solo lo pide si hay algo del heraldo configurado. Para el rol automático hace falta «Gestionar roles», y que el rol de Skald esté por encima del que va a dar. Para editar las normas, «Leer el historial de mensajes» en ese canal. Conviene desactivar los mensajes del sistema de Discord para que no salgan duplicados.
+
+### Comandos solo en ciertos canales
+
+Con `COMMAND_CHANNEL_IDS`, Skald solo responde a los comandos en esos canales (y en sus hilos). En el resto contesta, solo a quien lo usó, dónde encontrarlo. El canal de administración (`ADMIN_CHANNEL_ID`) siempre está permitido, para pruebas, y los comandos que solo ve quien los usa (como `/ayuda`) funcionan en cualquier canal. Para que ni siquiera aparezcan en otros canales, Discord permite restringirlos en *Ajustes del servidor → Integraciones → Skald*.
 
 ## Diseño y seguridad
 
@@ -116,6 +120,8 @@ Rellena `.env`:
 | `DATA_DIR` | No | Carpeta `data` del servidor (por defecto `/data`, la del contenedor) |
 | `ALERT_CHANNEL_ID` | No | Canal de avisos |
 | `ALERT_EVENTS` | No | Qué avisar: `join,leave,death,advancement,server` (por defecto, todo) |
+| `ALERT_CHANNEL_JOIN`, `_LEAVE`, `_DEATH`, `_ADVANCEMENT`, `_SERVER` | No | Canal propio para un tipo de aviso |
+| `COMMAND_CHANNEL_IDS` | No | Canales donde se pueden usar los comandos, separados por comas (vacío = todos) |
 | `ADMIN_USER_IDS` | No | IDs de administradores, separados por comas. El primero aparece en las normas como contacto |
 | `ADMIN_CHANNEL_ID` | No | Canal privado de administración (avisos de copias) |
 | `BACKUP_MAX_AGE_HOURS` | No | Horas sin copia nueva antes de avisar (por defecto 26) |

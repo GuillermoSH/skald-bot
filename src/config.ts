@@ -41,6 +41,14 @@ export const configSchema = discordSchema.extend({
   ALERT_CHANNEL_ID: snowflake.optional(),
   // Qué avisar: join, leave, death, advancement, server (separados por comas).
   ALERT_EVENTS: alertEventList,
+  // Canal propio para un tipo de aviso (si no, va a ALERT_CHANNEL_ID).
+  ALERT_CHANNEL_JOIN: snowflake.optional(),
+  ALERT_CHANNEL_LEAVE: snowflake.optional(),
+  ALERT_CHANNEL_DEATH: snowflake.optional(),
+  ALERT_CHANNEL_ADVANCEMENT: snowflake.optional(),
+  ALERT_CHANNEL_SERVER: snowflake.optional(),
+  // Canales donde se pueden usar los comandos (vacío = todos). El de administración siempre.
+  COMMAND_CHANNEL_IDS: snowflakeList,
   ADMIN_USER_IDS: snowflakeList,
 
   // Canal privado de administración (avisos internos, p. ej. copias de seguridad).
