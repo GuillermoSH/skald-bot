@@ -203,9 +203,8 @@ export const texts = {
     intro: [
       "# 📜 Las runas del reino",
       "Bienvenido al reino, viajero. Aquí se juega, se construye y se muere con honor (o se cae a la lava, que también pasa).",
-      "",
-      "Estas son las runas que todos respetamos:",
     ].join("\n"),
+    rulesLead: "## ⚖️ Las normas\nEstas son las runas que todos respetamos:",
     numbers: ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"],
     list: [
       { title: "Honra a los demás guerreros", text: "Nada de insultos, acoso ni discriminación." },

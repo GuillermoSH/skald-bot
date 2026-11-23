@@ -54,12 +54,14 @@ export function buildRulesEmbeds(options: RulesOptions): EmbedBuilder[] {
   const r = texts.rules;
   const embeds: EmbedBuilder[] = [];
 
-  // Portada: solo la imagen, arriba del todo.
-  if (options.imageUrl) embeds.push(new EmbedBuilder().setColor(COLORS.main).setImage(options.imageUrl));
+  // Tarjeta de cabecera: título, bienvenida y la imagen debajo (Discord pone la imagen al final del embed).
+  const header = new EmbedBuilder().setColor(COLORS.main).setDescription(r.intro);
+  if (options.imageUrl) header.setImage(options.imageUrl);
+  embeds.push(header);
 
   // Normas: cada una con su cabecera y la explicación debajo.
   const rules = r.list.map((rule, i) => `### ${r.numbers[i] ?? `${i + 1}.`} ${rule.title}\n${rule.text}`);
-  embeds.push(new EmbedBuilder().setColor(COLORS.main).setDescription([r.intro, ...rules].join("\n")));
+  embeds.push(new EmbedBuilder().setColor(COLORS.main).setDescription([r.rulesLead, ...rules].join("\n")));
 
   // Salones, agrupados por categoría.
   const groups = r.groups.map((group) => {

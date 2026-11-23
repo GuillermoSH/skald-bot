@@ -11,11 +11,12 @@ const total = (embeds: ReturnType<typeof buildRulesEmbeds>) =>
 const text = (embeds: ReturnType<typeof buildRulesEmbeds>) => embeds.map((e) => e.toJSON().description ?? "").join("\n");
 
 describe("buildRulesEmbeds", () => {
-  it("la imagen va sola, como portada, en el primer embed", () => {
-    const [cover, rules] = buildRulesEmbeds({ version: null, address: null, jarlId: null, imageUrl: "attachment://runas.png" });
-    expect(cover?.toJSON().image?.url).toBe("attachment://runas.png");
-    expect(cover?.toJSON().description).toBeUndefined();
-    expect(rules?.toJSON().description).toMatch(/^# 📜 Las runas del reino/);
+  it("tarjeta de cabecera: título, bienvenida e imagen en el primer embed; normas en el siguiente", () => {
+    const [header, rules] = buildRulesEmbeds({ version: null, address: null, jarlId: null, imageUrl: "attachment://runas.png" });
+    expect(header?.toJSON().description).toMatch(/^# 📜 Las runas del reino\nBienvenido/);
+    expect(header?.toJSON().image?.url).toBe("attachment://runas.png");
+    expect(rules?.toJSON().description).toMatch(/^## ⚖️ Las normas/);
+    expect(rules?.toJSON().image).toBeUndefined();
   });
 
   it("cada norma tiene su cabecera con número", () => {
