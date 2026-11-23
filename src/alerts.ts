@@ -5,9 +5,10 @@
  * - Salir y volver a entrar en poco tiempo no genera avisos.
  * - Al apagarse el servidor, un único aviso en vez de una salida por jugador.
  */
-import { PermissionFlagsBits, type Client } from "discord.js";
+import type { Client } from "discord.js";
 import type { AlertEventType } from "./config.js";
 import type { LogEvent } from "./core/logwatch.js";
+import { fetchSendableChannel } from "./util/channels.js";
 import { baseEmbed } from "./util/embeds.js";
 import { safeText } from "./util/escape.js";
 import { log } from "./util/log.js";
@@ -172,30 +173,13 @@ export class AlertQueue {
   }
 }
 
-const REQUIRED_PERMISSIONS = [
-  ["Ver canal", PermissionFlagsBits.ViewChannel],
-  ["Enviar mensajes", PermissionFlagsBits.SendMessages],
-  ["Insertar enlaces", PermissionFlagsBits.EmbedLinks],
-] as const;
-
-/**
- * Prepara el envío al canal de avisos. Devuelve null (y lo deja en el log) si
- * el canal no existe o no se puede escribir en él.
- */
+/** Prepara el envío al canal de avisos; null si no se puede escribir en él. */
 export async function createChannelSender(
   client: Client<true>,
   channelId: string,
 ): Promise<((lines: string[]) => Promise<void>) | null> {
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel?.isSendable()) {
-    log.warn(`Canal de avisos ${channelId} no encontrado o no admite mensajes: no habrá avisos`);
-    return null;
-  }
-  if (!channel.isDMBased()) {
-    const perms = channel.permissionsFor(client.user);
-    const missing = REQUIRED_PERMISSIONS.filter(([, flag]) => !perms?.has(flag)).map(([name]) => name);
-    if (missing.length > 0) log.warn(`Faltan permisos en el canal de avisos: ${missing.join(", ")}`);
-  }
+  const channel = await fetchSendableChannel(client, channelId, "avisos");
+  if (!channel) return null;
   log.info(`Avisos activados en el canal ${channelId}`);
   return async (lines) => {
     await channel.send({ embeds: [baseEmbed().setDescription(lines.join("\n"))], allowedMentions: { parse: [] } });

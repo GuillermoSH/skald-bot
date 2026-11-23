@@ -39,3 +39,20 @@ describe("loadConfig", () => {
     }
   });
 });
+
+describe("configuración del heraldo", () => {
+  it("acepta canales, rol y dirección opcionales", () => {
+    const c = loadConfig({
+      ...valid,
+      HERALD_CHANNEL_ID: "200000000000000001",
+      AUTO_ROLE_ID: "300000000000000001",
+      MC_PUBLIC_ADDRESS: "  reino.example  ",
+    });
+    expect(c.HERALD_CHANNEL_ID).toBe("200000000000000001");
+    expect(c.MC_PUBLIC_ADDRESS).toBe("reino.example");
+  });
+
+  it("rechaza un rol que no es un ID", () => {
+    expect(() => loadConfig({ ...valid, AUTO_ROLE_ID: "Viajero" })).toThrow(/AUTO_ROLE_ID/);
+  });
+});

@@ -43,6 +43,13 @@ export const configSchema = discordSchema.extend({
   ALERT_EVENTS: alertEventList,
   ADMIN_USER_IDS: snowflakeList,
 
+  // Heraldo: bienvenidas, despedidas y boosts (canal), runas y rol automático.
+  HERALD_CHANNEL_ID: snowflake.optional(),
+  RULES_CHANNEL_ID: snowflake.optional(),
+  AUTO_ROLE_ID: snowflake.optional(),
+  // Dirección del servidor de Minecraft que se enseña en las runas (opcional).
+  MC_PUBLIC_ADDRESS: z.string().trim().min(1).max(100).optional(),
+
   MC_HOST: z.string().min(1).default("minecraft"),
   MC_PORT: port.default(25565),
   RCON_HOST: z.string().min(1).default("minecraft"),

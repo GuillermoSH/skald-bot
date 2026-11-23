@@ -3,6 +3,7 @@ import {
   Events,
   GatewayIntentBits,
   MessageFlags,
+  Partials,
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
 } from "discord.js";
@@ -16,6 +17,8 @@ import { LogWatcher } from "./core/logwatch.js";
 import { NameResolver } from "./core/names.js";
 import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
+import { Herald, heraldNeedsMembers } from "./herald.js";
+import { publishRules } from "./rules.js";
 import { getServerStatus } from "./core/status.js";
 import { WorldDataUnavailableError, WorldStats } from "./core/stats.js";
 import { STARTING_PRESENCE, startPresenceLoop } from "./presence.js";
@@ -62,8 +65,12 @@ function main(): void {
     if (live) alerts?.push(event);
   });
 
+  const needsMembers = heraldNeedsMembers(config);
   const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    // GuildMembers es un intent privilegiado: solo se pide si el heraldo está configurado.
+    intents: needsMembers ? [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] : [GatewayIntentBits.Guilds],
+    // Para enterarse de las salidas de miembros que no estaban en caché.
+    partials: [Partials.GuildMember, Partials.User],
     // Nunca mencionar a nadie, venga el texto de donde venga.
     allowedMentions: { parse: [] },
     presence: STARTING_PRESENCE,
@@ -74,7 +81,24 @@ function main(): void {
     log.info(`Conectado a Discord como ${ready.user.tag}`);
     stopPresence = startPresenceLoop(ready, config);
     void startLogWatch(ready);
+    void startHerald(ready);
   });
+
+  const startHerald = async (ready: Client<true>) => {
+    try {
+      if (needsMembers) await new Herald(config).attach(ready);
+      if (config.RULES_CHANNEL_ID) {
+        const status = await getServerStatus(config.MC_HOST, config.MC_PORT, config.RCON_TIMEOUT_MS);
+        await publishRules(ready, config.RULES_CHANNEL_ID, {
+          version: status.online ? status.version : null,
+          address: config.MC_PUBLIC_ADDRESS ?? null,
+          jarlId: config.ADMIN_USER_IDS[0] ?? null,
+        });
+      }
+    } catch (error) {
+      log.error(`Heraldo: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
   // Textos primero (para reconocer muertes y traducir), luego avisos y log.
   const startLogWatch = async (ready: Client<true>) => {
@@ -112,7 +136,11 @@ function main(): void {
 
   client.login(config.DISCORD_TOKEN).catch((error: unknown) => {
     // Sin volcar el error entero: no queremos que el token acabe en un log.
-    log.error(`No se pudo iniciar sesión en Discord: ${error instanceof Error ? error.message : "error desconocido"}`);
+    const message = error instanceof Error ? error.message : "error desconocido";
+    log.error(`No se pudo iniciar sesión en Discord: ${message}`);
+    if (/disallowed intents/i.test(message)) {
+      log.error("Activa «Server Members Intent» en el portal de desarrolladores (pestaña Bot) o quita la configuración del heraldo.");
+    }
     process.exit(1);
   });
 }

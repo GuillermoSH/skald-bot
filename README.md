@@ -40,6 +40,18 @@ Los avisos se agrupan y tienen un límite por minuto. `ALERT_EVENTS` elige qué 
 
 Las muertes se reconocen con las plantillas oficiales del juego (`death.*`), que Skald lee del jar del servidor (`versions/<versión>/server-<versión>.jar`, en solo lectura), así que cubre todas las causas de muerte de la versión instalada.
 
+### Heraldo del servidor de Discord
+
+Skald también hace de heraldo, sin bots de terceros:
+
+- 📯 **Bienvenida** en un canal, mencionando solo al recién llegado y enlazando a las normas.
+- 🌫️ **Despedida** cuando alguien se va, y 💎 **aviso de boosts**.
+- ✉️ **Mensaje privado** al entrar con el enlace a las normas. Si el usuario tiene los privados cerrados, no pasa nada.
+- 🧭 **Rol automático** al entrar (`AUTO_ROLE_ID`). Es el único rol que Skald puede dar, y nunca lo quita.
+- 📜 **Mensaje de normas** (las «runas») en su canal: normas, guía de canales y cómo entrar al servidor de Minecraft. Si el texto cambia en `src/util/texts.ts`, al desplegar Skald **edita su propio mensaje** en vez de publicar otro.
+
+Necesita el *Server Members Intent* activado en el portal de desarrolladores (pestaña *Bot*). Skald solo lo pide si hay algo del heraldo configurado. Para el rol automático hace falta «Gestionar roles», y que el rol de Skald esté por encima del que va a dar. Para editar las normas, «Leer el historial de mensajes» en ese canal. Conviene desactivar los mensajes del sistema de Discord para que no salgan duplicados.
+
 ## Diseño y seguridad
 
 - **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura.
@@ -92,7 +104,11 @@ Rellena `.env`:
 | `DATA_DIR` | No | Carpeta `data` del servidor (por defecto `/data`, la del contenedor) |
 | `ALERT_CHANNEL_ID` | No | Canal de avisos |
 | `ALERT_EVENTS` | No | Qué avisar: `join,leave,death,advancement,server` (por defecto, todo) |
-| `ADMIN_USER_IDS` | No | IDs de administradores, separados por comas |
+| `ADMIN_USER_IDS` | No | IDs de administradores, separados por comas. El primero aparece en las normas como contacto |
+| `HERALD_CHANNEL_ID` | No | Canal de bienvenidas, despedidas y boosts |
+| `RULES_CHANNEL_ID` | No | Canal de normas, donde Skald mantiene su mensaje |
+| `AUTO_ROLE_ID` | No | Rol que se da automáticamente al entrar |
+| `MC_PUBLIC_ADDRESS` | No | Dirección del servidor de Minecraft que se muestra en las normas |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn` o `error` |
 
 Los valores por defecto de los hosts (`minecraft`) son los de un despliegue en el mismo Docker Compose que el servidor.
@@ -196,5 +212,6 @@ Los parsers de `src/core/parsers.ts` dependen del texto que devuelve el servidor
 - [x] Imagen Docker, despliegue junto al servidor (Compose) y actualización automática
 - [x] Estadísticas y rankings a partir de los ficheros del mundo
 - [x] Avisos en un canal: entradas, salidas, muertes y logros
+- [x] Heraldo: bienvenidas, despedidas, boosts, rol automático y normas
 - [ ] Estado de las copias de seguridad
 - [ ] Adaptadores para servidores con mods

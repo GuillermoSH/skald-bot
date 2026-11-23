@@ -159,6 +159,69 @@ export const texts = {
     advancementEmoji: { task: "🏆", challenge: "🎖️", goal: "🎯" } satisfies Record<AdvancementKind, string>,
   },
 
+  // Heraldo (#gjallarhorn). {m} = mención del usuario; {r} = referencia a las runas.
+  herald: {
+    welcome: [
+      (m: string, r: string) => `📯 **Suena el Gjallarhorn.** ${m} cruza el Bifröst y llega al reino. Lee las ${r} antes de sentarte en el salón.`,
+      (m: string, r: string) => `📯 Un nuevo viajero a las puertas: bienvenido, ${m}. Las ${r} te esperan.`,
+      (m: string, r: string) => `📯 Heimdall ha visto llegar a ${m}. Que alguien le sirva hidromiel… después de leer las ${r}.`,
+    ],
+    farewell: [
+      (n: string) => `🌫️ **${n}** ha partido del reino. Que los vientos le sean favorables.`,
+      (n: string) => `🌫️ **${n}** ha cruzado el Bifröst de vuelta. Su asiento en el salón queda libre.`,
+    ],
+    boost: (m: string, count: number, tier: number) =>
+      `💎 ${m} ha ofrendado un boost al reino. ¡Skål! Ya son ${count} ${count === 1 ? "ofrenda" : "ofrendas"}${tier > 0 ? ` (nivel ${tier})` : ""}.`,
+    dm: (name: string, guild: string, rulesUrl: string | null) =>
+      [
+        `Saludos, **${name}**. Soy Skald, el bardo de **${guild}**.`,
+        rulesUrl ? `Antes de sentarte en el salón, lee las runas del reino: ${rulesUrl}` : null,
+        "Si quieres jugar en Valhalla, nuestro servidor de Minecraft, escríbele al Jarl. ¡Skål!",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    rulesFallback: "runas",
+  },
+
+  // Mensaje fijo de #runas. Si cambia, Skald edita su mensaje al desplegarse.
+  rules: {
+    title: "📜 Las runas del reino",
+    intro:
+      "Bienvenido al reino, viajero. Aquí se juega, se construye y se muere con honor (o se cae a la lava, que también pasa). Estas son las runas que todos respetamos:",
+    list: [
+      "**Honra a los demás guerreros.** Nada de insultos, acoso ni discriminación.",
+      "**Lo ajeno no se toca.** Nada de griefing ni robos: lo que no es tuyo, se pide.",
+      "**El PvP, solo si los dos aceptan.**",
+      "**Sin trampas.** Nada de hacks, X-ray, duplicaciones ni exploits. Mods de rendimiento y estéticos, sí; si dudas, pregunta al Jarl.",
+      "**Cuida el reino.** Granjas grandes con cabeza, que no hundan el TPS (`/reino` lo chiva).",
+      "**Respeta el espacio.** Construye a una distancia razonable de los demás, salvo que te inviten.",
+      "**En Discord, cada cosa en su canal.** Sin spam ni contenido NSFW.",
+      "**La palabra del Jarl y de sus huscarles es ley.**",
+    ],
+    channelsTitle: "🗺️ Los salones del reino",
+    channels: [
+      "📯┃gjallarhorn · llegadas, boosts y anuncios",
+      "👑┃salón-del-trono · charla general",
+      "🔥 Hoguera del clan · voz",
+      "📖┃crónicas · pregúntale a Skald: `/reino`, `/gestas`, `/cronica`, `/saga`…",
+      "🐦‍⬛┃cuervos · Skald avisa de lo que pasa en el Minecraft",
+      "⚒️┃la-forja · capturas de construcciones",
+      "🎬┃hazañas · clips y momentos épicos",
+    ],
+    joinTitle: "⚔️ Cómo entrar en Valhalla (Minecraft)",
+    join: (opts: { version: string | null; address: string | null; jarl: string | null }) =>
+      [
+        `Minecraft **Java${opts.version ? ` ${opts.version}` : ""}**, sin mods.`,
+        "El reino está protegido tras el Bifröst: para entrar necesitas un túnel de acceso.",
+        opts.jarl ? `Escríbele a ${opts.jarl} y te lo prepara.` : "Escríbele al Jarl y te lo prepara.",
+        opts.address ? `Dirección: \`${opts.address}\`` : null,
+        "Cuando ya juegues, recibirás el rol **⚔️ Einherjar**.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    footer: "Skald · cantor del reino · Este mensaje se actualiza solo",
+  },
+
   /** Cuando no se sabe el nombre de un UUID. */
   unknownWarrior: (uuid: string) => `Guerrero ${uuid.slice(0, 8)}`,
 
