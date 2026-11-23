@@ -15,6 +15,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/gestas <categoría>` | Rankings: tiempo jugado, muertes, mobs, distancia… y otros menos serios (pasto de creepers, muertes tontas, lanzahuevos, rage quit…) |
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
 | `/saga` | Las últimas muertes y logros del reino |
+| `/memoria` | Estado de las copias de seguridad: última copia, tamaño e historial |
 | `/runas` | Versión, cargador y datos técnicos del servidor |
 | `/mapa` | Enlace al mapa web (BlueMap), si está configurado |
 | `/ayuda` | Lista de comandos (solo la ve quien la pide) |
@@ -39,6 +40,17 @@ Si se configura `ALERT_CHANNEL_ID`, Skald sigue el log del servidor y avisa en e
 Los avisos se agrupan y tienen un límite por minuto. `ALERT_EVENTS` elige qué tipos se avisan. El bot necesita en ese canal los permisos *Ver canal*, *Enviar mensajes* e *Insertar enlaces*; si falta alguno, lo dice en su log al arrancar.
 
 Las muertes se reconocen con las plantillas oficiales del juego (`death.*`), que Skald lee del jar del servidor (`versions/<versión>/server-<versión>.jar`, en solo lectura), así que cubre todas las causas de muerte de la versión instalada.
+
+### Copias de seguridad
+
+Skald vigila la carpeta de copias (montada en solo lectura; nunca crea, borra ni restaura nada) y, si se configura `ADMIN_CHANNEL_ID`, avisa en ese canal privado **solo cuando algo falla**:
+
+- la última copia tiene más de `BACKUP_MAX_AGE_HOURS` horas (26 por defecto),
+- no hay ninguna copia,
+- una copia nueva pesa menos de la mitad que la anterior (posible copia incompleta),
+- no se puede leer la carpeta.
+
+Y una vez más cuando se recupera. Pensado para el formato de [itzg/mc-backup](https://github.com/itzg/docker-mc-backup) (`world-AAAAMMDD-HHMMSS.tar.gz`).
 
 ### Heraldo del servidor de Discord
 
@@ -105,6 +117,9 @@ Rellena `.env`:
 | `ALERT_CHANNEL_ID` | No | Canal de avisos |
 | `ALERT_EVENTS` | No | Qué avisar: `join,leave,death,advancement,server` (por defecto, todo) |
 | `ADMIN_USER_IDS` | No | IDs de administradores, separados por comas. El primero aparece en las normas como contacto |
+| `ADMIN_CHANNEL_ID` | No | Canal privado de administración (avisos de copias) |
+| `BACKUP_MAX_AGE_HOURS` | No | Horas sin copia nueva antes de avisar (por defecto 26) |
+| `BACKUPS_DIR` | No | Carpeta de copias (por defecto `/backups`, la del contenedor) |
 | `HERALD_CHANNEL_ID` | No | Canal de bienvenidas, despedidas y boosts |
 | `RULES_CHANNEL_ID` | No | Canal de normas, donde Skald mantiene su mensaje |
 | `AUTO_ROLE_ID` | No | Rol que se da automáticamente al entrar |
@@ -223,5 +238,5 @@ Los parsers de `src/core/parsers.ts` dependen del texto que devuelve el servidor
 - [x] Estadísticas y rankings a partir de los ficheros del mundo
 - [x] Avisos en un canal: entradas, salidas, muertes y logros
 - [x] Heraldo: bienvenidas, despedidas, boosts, rol automático y normas
-- [ ] Estado de las copias de seguridad
+- [x] Estado de las copias de seguridad
 - [ ] Adaptadores para servidores con mods

@@ -23,6 +23,18 @@ export function formatDistance(cm: number): string {
   return km >= 1 ? `${formatCount(km)} km` : `${Math.round(cm / 100)} m`;
 }
 
+/** Bytes → "870,1 MB", "4,9 GB". */
+export function formatBytes(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit++;
+  }
+  return `${value.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} ${units[unit] ?? "B"}`;
+}
+
 export function formatMetric(unit: MetricUnit, value: number): string {
   switch (unit) {
     case "ticks":

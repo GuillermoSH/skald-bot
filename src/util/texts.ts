@@ -263,6 +263,36 @@ export const texts = {
     footer: "Skald · cantor del reino · Este mensaje se actualiza solo",
   },
 
+  // /memoria y avisos de copias (Muninn, el cuervo de la memoria)
+  memoria: {
+    title: "🐦‍⬛ La memoria del reino",
+    intro: "Cada noche, Muninn vuela sobre el reino y guarda una copia de todo lo construido.",
+    status: {
+      ok: "✅ A salvo",
+      none: "⚠️ No hay ninguna memoria guardada",
+      stale: "⚠️ La última memoria es demasiado antigua",
+      small: "⚠️ La última memoria pesa sospechosamente poco",
+    },
+    fields: {
+      status: "Estado",
+      latest: "Última memoria",
+      size: "Tamaño",
+      count: "Memorias guardadas",
+      history: "Últimas memorias",
+    },
+    count: (n: number, total: string) => `${n} · ${total} en total`,
+    none: "Muninn aún no ha guardado ninguna memoria.",
+  },
+  backupAlerts: {
+    none: "⚠️ **Muninn no encuentra ninguna memoria** en la carpeta de copias. Revisad `minecraft-backup`.",
+    stale: (when: string, hours: number) =>
+      `⚠️ **Muninn no ha vuelto.** La última memoria del reino es de ${when} (hace más de ${hours} h). Revisad \`minecraft-backup\`.`,
+    small: (size: string, previous: string) =>
+      `⚠️ **La última memoria pesa sospechosamente poco:** ${size}, frente a ${previous} de la anterior. Puede estar incompleta.`,
+    unavailable: "⚠️ **No puedo leer la carpeta de copias.** ¿Está montada en el contenedor?",
+    recovered: (when: string, size: string) => `✅ **Muninn ha vuelto:** memoria del reino guardada ${when} (${size}).`,
+  },
+
   /** Cuando no se sabe el nombre de un UUID. */
   unknownWarrior: (uuid: string) => `Guerrero ${uuid.slice(0, 8)}`,
 
@@ -272,6 +302,7 @@ export const texts = {
     "📜 Las runas que devuelve el servidor no se dejan leer. Seguramente ha cambiado de versión; queda anotado.",
   wrongGuild: "Skald solo canta en su propio salón.",
   worldUnavailable: "📜 No encuentro las crónicas del mundo: no puedo leer los ficheros del servidor.",
+  backupsUnavailable: "🐦‍⬛ Muninn no encuentra la carpeta de las memorias (copias de seguridad).",
 
   // Presencia: estado personalizado, se lee tal cual bajo el nombre del bot
   // (sin «Viendo» / «Escuchando» delante), así que cada texto va completo.

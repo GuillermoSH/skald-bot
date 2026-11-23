@@ -8,9 +8,11 @@ import {
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { AlertQueue, createChannelSender } from "./alerts.js";
+import { BackupWatcher } from "./backup-watch.js";
 import { commandsByName } from "./commands/index.js";
 import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
+import { BackupsUnavailableError } from "./core/backups.js";
 import { Chronicle } from "./core/chronicle.js";
 import { jarEnglishLoader, fetchSpanishLang, Translator } from "./core/lang.js";
 import { LogWatcher } from "./core/logwatch.js";
@@ -19,6 +21,8 @@ import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
 import { Herald, heraldNeedsMembers } from "./herald.js";
 import { publishRules } from "./rules.js";
+import { fetchSendableChannel } from "./util/channels.js";
+import { baseEmbed, COLORS } from "./util/embeds.js";
 import { getServerStatus } from "./core/status.js";
 import { WorldDataUnavailableError, WorldStats } from "./core/stats.js";
 import { STARTING_PRESENCE, startPresenceLoop } from "./presence.js";
@@ -82,7 +86,23 @@ function main(): void {
     stopPresence = startPresenceLoop(ready, config);
     void startLogWatch(ready);
     void startHerald(ready);
+    void startBackupWatch(ready);
   });
+
+  let backupWatcher: BackupWatcher | null = null;
+  const startBackupWatch = async (ready: Client<true>) => {
+    if (!config.ADMIN_CHANNEL_ID) return;
+    const channel = await fetchSendableChannel(ready, config.ADMIN_CHANNEL_ID, "administración");
+    if (!channel) return;
+    backupWatcher = new BackupWatcher(config.BACKUPS_DIR, config.BACKUP_MAX_AGE_HOURS, async (message, ok) => {
+      await channel.send({
+        embeds: [baseEmbed(ok ? COLORS.ok : COLORS.error).setDescription(message)],
+        allowedMentions: { parse: [] },
+      });
+    });
+    backupWatcher.start();
+    log.info("Vigilando las copias de seguridad (avisos en el canal de administración)");
+  };
 
   const startHerald = async (ready: Client<true>) => {
     try {
@@ -128,6 +148,7 @@ function main(): void {
     log.info(`Recibido ${signal}, cerrando…`);
     stopPresence();
     watcher.stop();
+    backupWatcher?.stop();
     alerts?.dispose();
     void client.destroy().finally(() => process.exit(0));
   };
@@ -167,6 +188,9 @@ async function handleCommand(interaction: ChatInputCommandInteraction, ctx: Comm
     } else if (error instanceof RconParseError) {
       message = texts.parseError;
       log.error(error.message);
+    } else if (error instanceof BackupsUnavailableError) {
+      message = texts.backupsUnavailable;
+      log.error(`/${interaction.commandName}: ${error.message}`);
     } else if (error instanceof WorldDataUnavailableError) {
       message = texts.worldUnavailable;
       const cause = error.cause instanceof Error ? ` (${error.cause.message})` : "";

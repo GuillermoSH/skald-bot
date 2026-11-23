@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCount, formatDistance, formatDuration } from "../src/util/format.js";
+import { formatBytes, formatCount, formatDistance, formatDuration } from "../src/util/format.js";
 
 describe("formato", () => {
   it("duraciones en ticks", () => {
@@ -15,5 +15,14 @@ describe("formato", () => {
 
   it("números con separador español", () => {
     expect(formatCount(1234567)).toBe("1.234.567");
+  });
+});
+
+
+describe("formatBytes", () => {
+  it("unidades decimales con formato español", () => {
+    expect(formatBytes(870_074_187)).toBe("870,1 MB");
+    expect(formatBytes(4_900_000_000)).toBe("4,9 GB");
+    expect(formatBytes(512)).toBe("512 B");
   });
 });

@@ -43,6 +43,11 @@ export const configSchema = discordSchema.extend({
   ALERT_EVENTS: alertEventList,
   ADMIN_USER_IDS: snowflakeList,
 
+  // Canal privado de administración (avisos internos, p. ej. copias de seguridad).
+  ADMIN_CHANNEL_ID: snowflake.optional(),
+  // Antigüedad máxima de la última copia antes de avisar (la de mc-backup es diaria).
+  BACKUP_MAX_AGE_HOURS: z.coerce.number().min(1).max(24 * 30).default(26),
+
   // Heraldo: bienvenidas, despedidas y boosts (canal), runas y rol automático.
   HERALD_CHANNEL_ID: snowflake.optional(),
   RULES_CHANNEL_ID: snowflake.optional(),
