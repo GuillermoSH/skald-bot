@@ -26,6 +26,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY assets ./assets
 COPY package.json ./
 
 LABEL org.opencontainers.image.title="Skald" \

@@ -24,11 +24,23 @@ function fakeClient() {
   return { client, emitter, channel };
 }
 
+const user = (fields: Record<string, unknown>) => ({
+  displayAvatarURL: () => "https://cdn.example/avatar.png",
+  ...fields,
+});
+
 function fakeMember(overrides: Record<string, unknown> = {}) {
   return {
     id: "400000000000000001",
-    guild: { id: GUILD, name: "El reino", premiumSubscriptionCount: 3, premiumTier: 1 },
-    user: { bot: false, globalName: "Ragnar", username: "ragnar" },
+    guild: {
+      id: GUILD,
+      name: "El reino",
+      premiumSubscriptionCount: 3,
+      premiumTier: 1,
+      memberCount: 12,
+      roles: { cache: new Map([["300000000000000001", { name: "🧭 Viajero" }]]) },
+    },
+    user: user({ bot: false, globalName: "Ragnar", username: "ragnar" }),
     partial: false,
     premiumSince: null,
     toString: () => "<@400000000000000001>",
@@ -50,10 +62,20 @@ describe("Herald", () => {
 
     expect(member.roles.add).toHaveBeenCalledWith("300000000000000001", expect.any(String));
     expect(channel.send).toHaveBeenCalledTimes(1);
-    const welcome = channel.send.mock.calls[0]?.[0] as { content: string; allowedMentions: unknown };
+    const welcome = channel.send.mock.calls[0]?.[0] as {
+      content: string;
+      allowedMentions: unknown;
+      embeds: { toJSON(): { description?: string; image?: { url: string }; footer?: { text: string } } }[];
+      files: unknown[];
+    };
     expect(welcome.content).toContain("<@400000000000000001>");
     expect(welcome.content).toContain("<#200000000000000002>");
     expect(welcome.allowedMentions).toEqual({ users: ["400000000000000001"] });
+    const embed = welcome.embeds[0]?.toJSON();
+    expect(embed?.description).toContain("🧭 Viajero");
+    expect(embed?.image?.url).toBe("attachment://bienvenida.gif");
+    expect(embed?.footer?.text).toContain("nº 12");
+    expect(welcome.files).toHaveLength(1);
     const dm = member.send.mock.calls[0]?.[0] as { content: string };
     expect(dm.content).toContain(`https://discord.com/channels/${GUILD}/200000000000000002`);
   });
@@ -61,7 +83,7 @@ describe("Herald", () => {
   it("ignora a otros bots y a otros servidores", async () => {
     const { client, emitter, channel } = fakeClient();
     await new Herald(config).attach(client);
-    const bot = fakeMember({ user: { bot: true, username: "otro" } });
+    const bot = fakeMember({ user: user({ bot: true, username: "otro" }) });
     const stranger = fakeMember({ guild: { id: "1", name: "x" } });
     emitter.emit(Events.GuildMemberAdd, bot);
     emitter.emit(Events.GuildMemberAdd, stranger);
@@ -81,10 +103,18 @@ describe("Herald", () => {
   it("despedida con el nombre escapado y sin menciones", async () => {
     const { client, emitter, channel } = fakeClient();
     await new Herald(config).attach(client);
-    emitter.emit(Events.GuildMemberRemove, fakeMember({ user: { bot: false, globalName: "*Bjorn*", username: "b" } }));
+    emitter.emit(
+      Events.GuildMemberRemove,
+      fakeMember({ user: user({ bot: false, globalName: "*Bjorn*", username: "b" }) }),
+    );
     await flush();
-    const msg = channel.send.mock.calls[0]?.[0] as { content: string; allowedMentions: unknown };
-    expect(msg.content).toContain("\\*Bjorn\\*");
+    const msg = channel.send.mock.calls[0]?.[0] as {
+      allowedMentions: unknown;
+      embeds: { toJSON(): { description?: string; image?: { url: string } } }[];
+    };
+    const embed = msg.embeds[0]?.toJSON();
+    expect(embed?.description).toContain("\\*Bjorn\\*");
+    expect(embed?.image?.url).toBe("attachment://despedida.gif");
     expect(msg.allowedMentions).toEqual({ parse: [] });
   });
 

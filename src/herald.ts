@@ -3,9 +3,19 @@
  * en un canal, mensaje privado con las runas y rol automático al entrar.
  * Requiere el «Server Members Intent» activado en el portal de Discord.
  */
-import { Events, type Client, type GuildMember, type PartialGuildMember, type SendableChannels } from "discord.js";
+import {
+  EmbedBuilder,
+  Events,
+  type Client,
+  type GuildMember,
+  type MessageCreateOptions,
+  type PartialGuildMember,
+  type SendableChannels,
+} from "discord.js";
 import type { Config } from "./config.js";
+import { asset } from "./util/assets.js";
 import { fetchSendableChannel } from "./util/channels.js";
+import { COLORS } from "./util/embeds.js";
 import { safeText } from "./util/escape.js";
 import { log } from "./util/log.js";
 import { texts } from "./util/texts.js";
@@ -22,6 +32,20 @@ export function isNewBoost(before: { premiumSince: Date | null }, after: { premi
 
 export function displayName(member: GuildMember | PartialGuildMember): string {
   return member.user.globalName ?? member.user.username;
+}
+
+/** Embed con imagen (si está en assets/) y avatar del miembro. */
+function decorated(
+  member: GuildMember | PartialGuildMember,
+  image: string,
+  build: (embed: EmbedBuilder) => EmbedBuilder,
+): Pick<MessageCreateOptions, "embeds" | "files"> {
+  const embed = build(new EmbedBuilder().setColor(COLORS.main)).setThumbnail(
+    member.user.displayAvatarURL({ size: 256 }),
+  );
+  const img = asset(image);
+  if (img) embed.setImage(img.url);
+  return { embeds: [embed], files: img ? [img.file] : [] };
 }
 
 export class Herald {
@@ -63,20 +87,42 @@ export class Herald {
     if (!this.isOurs(member)) return;
     const { AUTO_ROLE_ID, RULES_CHANNEL_ID } = this.config;
 
+    let roleName: string | null = null;
     if (AUTO_ROLE_ID) {
       // Lista cerrada: solo el rol configurado, y solo se añade.
-      await member.roles.add(AUTO_ROLE_ID, "Rol automático de bienvenida").catch((error: unknown) => {
-        log.warn(
-          `No se pudo dar el rol automático (¿Skald está por encima del rol y tiene «Gestionar roles»?): ${error instanceof Error ? error.message : String(error)}`,
-        );
-      });
+      roleName = await member.roles
+        .add(AUTO_ROLE_ID, "Rol automático de bienvenida")
+        .then(() => member.guild.roles.cache.get(AUTO_ROLE_ID)?.name ?? null)
+        .catch((error: unknown) => {
+          log.warn(
+            `No se pudo dar el rol automático (¿Skald está por encima del rol y tiene «Gestionar roles»?): ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return null;
+        });
     }
 
     if (this.channel) {
       const rules = RULES_CHANNEL_ID ? `<#${RULES_CHANNEL_ID}>` : texts.herald.rulesFallback;
+      const jarlId = this.config.ADMIN_USER_IDS[0];
       const phrases = texts.herald.welcome;
       const phrase = phrases[this.welcomeIndex++ % phrases.length] ?? phrases[0];
-      await this.channel.send({ content: phrase(member.toString(), rules), allowedMentions: { users: [member.id] } });
+      await this.channel.send({
+        content: phrase(member.toString(), rules),
+        ...decorated(member, "bienvenida.gif", (e) =>
+          e
+            .setTitle(texts.herald.welcomeTitle)
+            .setDescription(
+              texts.herald.welcomeLines({
+                role: roleName ? safeText(roleName, 50) : null,
+                rules,
+                jarl: jarlId ? `<@${jarlId}>` : null,
+              }),
+            )
+            .setFooter({ text: texts.herald.memberNumber(member.guild.memberCount) }),
+        ),
+        // Solo se notifica al recién llegado (la mención del Jarl va en el embed, sin notificar).
+        allowedMentions: { users: [member.id] },
+      });
     }
 
     const rulesUrl = RULES_CHANNEL_ID ? `https://discord.com/channels/${member.guild.id}/${RULES_CHANNEL_ID}` : null;
@@ -95,7 +141,12 @@ export class Herald {
     if (!this.isOurs(member) || !this.channel) return;
     const phrases = texts.herald.farewell;
     const phrase = phrases[this.farewellIndex++ % phrases.length] ?? phrases[0];
-    await this.channel.send({ content: phrase(safeText(displayName(member), 32)), allowedMentions: { parse: [] } });
+    await this.channel.send({
+      ...decorated(member, "despedida.gif", (e) =>
+        e.setTitle(texts.herald.farewellTitle).setDescription(phrase(safeText(displayName(member), 32))),
+      ),
+      allowedMentions: { parse: [] },
+    });
   }
 
   private async onUpdate(before: GuildMember | PartialGuildMember, after: GuildMember): Promise<void> {
@@ -105,6 +156,7 @@ export class Herald {
     const guild = after.guild;
     await this.channel.send({
       content: texts.herald.boost(after.toString(), guild.premiumSubscriptionCount ?? 0, guild.premiumTier),
+      ...decorated(after, "ofrenda.gif", (e) => e.setTitle(texts.herald.boostTitle).setColor(COLORS.ok)),
       allowedMentions: { users: [after.id] },
     });
   }

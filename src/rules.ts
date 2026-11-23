@@ -5,6 +5,7 @@
  * uno nuevo (y el viejo habrá que borrarlo a mano).
  */
 import { ChannelType, EmbedBuilder, type APIEmbed, type Client } from "discord.js";
+import { asset } from "./util/assets.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { COLORS } from "./util/embeds.js";
 import { log } from "./util/log.js";
@@ -35,12 +36,12 @@ export function matchGuideChannels(
   return found;
 }
 
-export function buildRulesEmbeds(options: RulesOptions): EmbedBuilder[] {
+export function buildRulesEmbeds(options: RulesOptions & { imageUrl?: string }): EmbedBuilder[] {
   const r = texts.rules;
+  const header = new EmbedBuilder().setColor(COLORS.main).setTitle(r.title);
+  if (options.imageUrl) header.setImage(options.imageUrl);
   return [
-    new EmbedBuilder()
-      .setColor(COLORS.main)
-      .setTitle(r.title)
+    header
       .setDescription(`${r.intro}\n\n${r.list.map((rule, i) => `${i + 1}. ${rule}`).join("\n")}`),
     new EmbedBuilder()
       .setColor(COLORS.main)
@@ -70,7 +71,12 @@ export function buildRulesEmbeds(options: RulesOptions): EmbedBuilder[] {
 /** Lo que importa para saber si el mensaje publicado está al día. */
 function fingerprint(embeds: readonly APIEmbed[]): string {
   return JSON.stringify(
-    embeds.map((e) => ({ title: e.title ?? null, description: e.description ?? null, footer: e.footer?.text ?? null })),
+    embeds.map((e) => ({
+      title: e.title ?? null,
+      description: e.description ?? null,
+      footer: e.footer?.text ?? null,
+      image: e.image ? true : false,
+    })),
   );
 }
 
@@ -89,8 +95,10 @@ export async function publishRules(client: Client<true>, channelId: string, opti
   const missing = texts.rules.channels.filter((c) => !channelIds.has(c.find)).map((c) => c.label);
   if (missing.length > 0) log.warn(`Runas: canales sin enlace (no encontrados por nombre): ${missing.join(", ")}`);
 
-  const embeds = buildRulesEmbeds({ ...options, channelIds });
-  const payload = { embeds, allowedMentions: { parse: [] } };
+  const image = asset("runas.png");
+  const embeds = buildRulesEmbeds({ ...options, channelIds, ...(image ? { imageUrl: image.url } : {}) });
+  // `attachments: []` al editar sustituye la imagen anterior en vez de acumularlas.
+  const payload = { embeds, files: image ? [image.file] : [], attachments: [], allowedMentions: { parse: [] } };
   const recent = await channel.messages.fetch({ limit: 50 });
   const existing = recent.find((m) => m.author.id === client.user.id && m.embeds[0]?.title === texts.rules.title);
 

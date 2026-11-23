@@ -196,6 +196,14 @@ Para probar el bot contra él, en `.env`: `MC_HOST=127.0.0.1`, `RCON_HOST=127.0.
 
 Las estadísticas (`/gestas`, `/cronica`) se pueden probar con los datos sintéticos de `test/fixtures/data` poniendo `DATA_DIR=./test/fixtures/data`.
 
+### Imágenes
+
+Las imágenes en pixel art de bienvenida, despedida, boosts y normas son diseño propio y se generan con código, sin dependencias. Están en `scripts/art/`, con un codificador PNG y otro GIF propios. Para regenerarlas tras retocar una escena:
+
+```bash
+pnpm art   # escribe assets/*.gif y assets/runas.png
+```
+
 ### Fuentes externas
 
 - **Nombres en español** de logros, mobs y bloques: se descargan al arrancar de los servidores de recursos de Mojang, para la versión del servidor. Si no hay red, se muestran los ids en formato legible.

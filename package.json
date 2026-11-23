@@ -16,7 +16,8 @@
     "smoke": "tsx scripts/smoke.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "art": "tsx scripts/art/generate.ts"
   },
   "dependencies": {
     "discord.js": "14.28.1",

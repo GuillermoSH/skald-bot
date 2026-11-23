@@ -172,6 +172,20 @@ export const texts = {
     ],
     boost: (m: string, count: number, tier: number) =>
       `💎 ${m} ha ofrendado un boost al reino. ¡Skål! Ya son ${count} ${count === 1 ? "ofrenda" : "ofrendas"}${tier > 0 ? ` (nivel ${tier})` : ""}.`,
+    // Embed que acompaña a la bienvenida
+    welcomeTitle: "📯 Suena el Gjallarhorn",
+    welcomeLines: (opts: { role: string | null; rules: string; jarl: string | null }) =>
+      [
+        opts.role ? `🧭 Ya llevas el rol **${opts.role}**.` : null,
+        `📜 Empieza por las ${opts.rules}: normas, salones y cómo entrar.`,
+        `⚔️ ¿Quieres jugar en Valhalla? Escríbele a ${opts.jarl ?? "el Jarl"}.`,
+        "🍺 Coge un cuerno de hidromiel y siéntate. ¡Skål!",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    memberNumber: (n: number) => `Eres el miembro nº ${n} del reino`,
+    farewellTitle: "🌫️ Un drakkar zarpa",
+    boostTitle: "💎 Una ofrenda para el reino",
     dm: (name: string, guild: string, rulesUrl: string | null) =>
       [
         `Saludos, **${name}**. Soy Skald, el bardo de **${guild}**.`,
