@@ -8,7 +8,7 @@
  * imagen, cabeceras (# ## ###), pasos numerados y la dirección en un bloque de código.
  */
 import { ChannelType, EmbedBuilder, type APIEmbed, type Client } from "discord.js";
-import { asset } from "./util/assets.js";
+import { asset, imageFileName } from "./util/assets.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { COLORS } from "./util/embeds.js";
 import { log } from "./util/log.js";
@@ -91,7 +91,8 @@ function fingerprint(embeds: readonly APIEmbed[]): string {
       title: e.title ?? null,
       description: e.description ?? null,
       footer: e.footer?.text ?? null,
-      image: e.image ? true : false,
+      // El nombre del adjunto lleva la huella de la imagen: si cambia, se edita.
+      image: imageFileName(e.image?.url),
     })),
   );
 }
@@ -113,7 +114,7 @@ export async function publishRules(client: Client<true>, channelId: string, opti
     .map((c) => c.label);
   if (missing.length > 0) log.warn(`Runas: canales sin enlace (no encontrados por nombre): ${missing.join(", ")}`);
 
-  const image = asset("runas.png");
+  const image = asset("runas.png", { versioned: true });
   const embeds = buildRulesEmbeds({ ...options, channelIds, ...(image ? { imageUrl: image.url } : {}) });
   // `attachments: []` al editar sustituye la imagen anterior en vez de acumularlas.
   const payload = { embeds, files: image ? [image.file] : [], attachments: [], allowedMentions: { parse: [] } };
