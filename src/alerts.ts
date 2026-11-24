@@ -189,6 +189,11 @@ export class AlertQueue {
     this.dispatch(event);
   }
 
+  /** Un aviso que no sale del log (hitos...), ya formateado, al canal de ese tipo. */
+  pushLine(type: AlertEventType, line: string): void {
+    this.send(type, line);
+  }
+
   /** Para pruebas y cierre ordenado. */
   dispose(): void {
     for (const batcher of this.batchers.values()) batcher.dispose();
@@ -197,14 +202,18 @@ export class AlertQueue {
   }
 
   private dispatch(event: LogEvent): void {
-    const send = this.routes.get(alertTypeOf(event));
+    if (this.routes.has(alertTypeOf(event))) this.send(alertTypeOf(event), this.formatter.format(event));
+  }
+
+  private send(type: AlertEventType, line: string): void {
+    const send = this.routes.get(type);
     if (!send) return;
     let batcher = this.batchers.get(send);
     if (!batcher) {
       batcher = new ChannelBatcher(send, this.options, this.onError);
       this.batchers.set(send, batcher);
     }
-    batcher.enqueue(this.formatter.format(event));
+    batcher.enqueue(line);
   }
 }
 

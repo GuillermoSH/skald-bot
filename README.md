@@ -36,6 +36,7 @@ Si se configura `ALERT_CHANNEL_ID`, Skald sigue el log del servidor y avisa en e
 - muertes, en español: en combate, las valquirias se los llevan al **Valhalla**; las muertes sin gloria (caídas, lava, ahogamientos…) son para **Hel**,
 - 🏆 logros, 🎖️ desafíos y 🎯 metas, con su nombre en español; 🌟 **primero del reino** si nadie lo había conseguido antes (el histórico sale de los ficheros del mundo),
 - 🔥 arranque y 🌑 parada del servidor.
+- hitos personales (van al canal de los logros): ⏳ horas jugadas, 🧭 km recorridos, ⚔️ enemigos abatidos, 🪦 muertes, ⛏️ bloques picados, 🐉 dragón del End y 🥀 Wither. Lo ya superado antes de activar Skald no se anuncia.
 
 Los avisos se agrupan y tienen un límite por minuto. `ALERT_EVENTS` elige qué tipos se avisan, y cada tipo puede ir a su propio canal (`ALERT_CHANNEL_JOIN`, `_LEAVE`, `_DEATH`, `_ADVANCEMENT`, `_SERVER`); los que no tengan canal propio van a `ALERT_CHANNEL_ID`. El bot necesita en ese canal los permisos *Ver canal*, *Enviar mensajes* e *Insertar enlaces*; si falta alguno, lo dice en su log al arrancar.
 

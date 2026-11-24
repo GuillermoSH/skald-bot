@@ -17,6 +17,7 @@ import { ConfigError, loadConfig } from "./config.js";
 import { BackupsUnavailableError } from "./core/backups.js";
 import { Chronicle } from "./core/chronicle.js";
 import { emptyFirsts, FirstsLedger, firstsSchema } from "./core/firsts.js";
+import { emptyMilestones, MilestoneTracker, milestonesSchema } from "./core/milestones.js";
 import { jarEnglishLoader, fetchSpanishLang, Translator } from "./core/lang.js";
 import { LogWatcher } from "./core/logwatch.js";
 import { NameResolver } from "./core/names.js";
@@ -30,10 +31,14 @@ import { baseEmbed, COLORS } from "./util/embeds.js";
 import { getServerStatus } from "./core/status.js";
 import { WorldDataUnavailableError, WorldStats } from "./core/stats.js";
 import { STARTING_PRESENCE, startPresenceLoop } from "./presence.js";
+import { safeText } from "./util/escape.js";
+import { formatCount } from "./util/format.js";
 import { log, setLogLevel } from "./util/log.js";
 import { texts } from "./util/texts.js";
 
 const FIRSTS_RECONCILE_MS = 15 * 60_000;
+// El servidor guarda las estadísticas en cada autoguardado (~5 min).
+const MILESTONES_CHECK_MS = 5 * 60_000;
 
 function main(): void {
   let config;
@@ -91,6 +96,26 @@ function main(): void {
     }
   };
   let firstsTimer: NodeJS.Timeout | null = null;
+
+  // Hitos personales: van al canal de los logros (son hazañas también).
+  let milestones: MilestoneTracker | null = null;
+  const checkMilestones = async () => {
+    if (!milestones) return;
+    try {
+      const crossed = await milestones.check(await ctx.world.players());
+      if (crossed.length === 0) return;
+      const names = await ctx.names.resolve(crossed.map((c) => c.uuid));
+      for (const c of crossed) {
+        const player = names.get(c.uuid);
+        if (!player) continue;
+        log.info(`Hito: ${player} → ${c.id} ${c.threshold}`);
+        alerts?.pushLine("advancement", texts.alerts.milestone[c.id](`**${safeText(player, 32)}**`, formatCount(c.threshold)));
+      }
+    } catch (error) {
+      log.warn(`No se pudieron revisar los hitos: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+  let milestonesTimer: NodeJS.Timeout | null = null;
 
   const needsMembers = heraldNeedsMembers(config);
   const client = new Client({
@@ -161,6 +186,15 @@ function main(): void {
       });
     }
     try {
+      milestones = await MilestoneTracker.open(new JsonStore(path.join(config.STATE_DIR, "milestones.json"), milestonesSchema, emptyMilestones));
+    } catch (error) {
+      log.warn(`Sin estado de hitos: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    // Después de las rutas: lo superado con el bot apagado también se avisa.
+    // La primera vez, lo ya superado se apunta en silencio.
+    await checkMilestones();
+    milestonesTimer = setInterval(() => void checkMilestones(), MILESTONES_CHECK_MS);
+    try {
       await watcher.start();
       log.info("Siguiendo el log del servidor");
     } catch (error) {
@@ -179,8 +213,9 @@ function main(): void {
     watcher.stop();
     backupWatcher?.stop();
     if (firstsTimer) clearInterval(firstsTimer);
+    if (milestonesTimer) clearInterval(milestonesTimer);
     alerts?.dispose();
-    void Promise.allSettled([firsts?.flush(), client.destroy()]).finally(() => process.exit(0));
+    void Promise.allSettled([firsts?.flush(), milestones?.flush(), client.destroy()]).finally(() => process.exit(0));
   };
   process.once("SIGINT", () => { shutdown("SIGINT"); });
   process.once("SIGTERM", () => { shutdown("SIGTERM"); });

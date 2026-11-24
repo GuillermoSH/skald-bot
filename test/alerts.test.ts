@@ -165,3 +165,17 @@ describe("AlertFormatter · primero del reino", () => {
     expect(line).toContain("desafío **[Cálidos destinos turísticos]**");
   });
 });
+
+describe("AlertQueue · avisos que no salen del log", () => {
+  it("van al canal de su tipo", async () => {
+    vi.useFakeTimers();
+    const sent: string[][] = [];
+    const queue = new AlertQueue(new Map([["advancement", (lines: string[]) => { sent.push(lines); return Promise.resolve(); }]]), { batchMs: 10 });
+    queue.pushLine("advancement", "hito");
+    queue.pushLine("join", "no va a ningún sitio");
+    await vi.advanceTimersByTimeAsync(20);
+    expect(sent).toEqual([["hito"]]);
+    queue.dispose();
+    vi.useRealTimers();
+  });
+});

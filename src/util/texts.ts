@@ -4,6 +4,7 @@
  */
 import type { AdvancementKind } from "../core/logwatch.js";
 import type { MetricId } from "../core/metrics.js";
+import type { MilestoneId } from "../core/milestones.js";
 import type { TickState } from "../core/parsers.js";
 
 export const BOT_NAME = "Skald";
@@ -154,6 +155,16 @@ export const texts = {
       goal: (p: string, t: string) => `🌟 **¡Primero del reino!** ${p} es el primer guerrero en alcanzar la meta **[${t}]**.`,
     } satisfies Record<AdvancementKind, (p: string, t: string) => string>,
     firstNote: "-# Ningún guerrero lo había logrado antes. Los skaldas lo cantarán por generaciones.",
+    // Hitos personales. {p} en negrita; {n} ya formateado.
+    milestone: {
+      play_time: (p: string, n: string) => `⏳ ${p} ya lleva **${n} horas** en el reino. Los bancos del salón tienen su forma.`,
+      distance: (p: string, n: string) => `🧭 ${p} ha recorrido **${n} km** por el reino. Ni los cuervos de Odín vuelan tanto.`,
+      mob_kills: (p: string, n: string) => `⚔️ ${p} ha abatido a su enemigo número **${n}**. Las valquirias toman nota.`,
+      deaths: (p: string, n: string) => `🪦 ${p} ha muerto **${n} veces**. Hel ya le guarda sitio en su mesa.`,
+      blocks_mined: (p: string, n: string) => `⛏️ ${p} ha picado **${n} bloques**. Los enanos de Nidavellir lo quieren en su forja.`,
+      dragon: (p: string) => `🐉 ${p} ha derrotado al **dragón del End**. Su nombre ya se canta en todo el reino.`,
+      wither: (p: string) => `🥀 ${p} ha derrotado al **Wither**. Hasta los jotuns se apartan a su paso.`,
+    } satisfies Record<MilestoneId, (p: string, n: string) => string>,
     dropped: (n: number) => `-# …y ${n} avisos más que los cuervos no pudieron cargar.`,
   },
 
