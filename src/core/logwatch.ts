@@ -27,7 +27,18 @@ export type LogEvent =
       /** Murió a manos de alguien (mob o jugador). */
       combat: boolean;
     }
-  | { type: "advancement"; at: Date; player: string; kind: AdvancementKind; title: string }
+  | {
+      type: "advancement";
+      at: Date;
+      player: string;
+      kind: AdvancementKind;
+      /** Título en español (o el del log si no hay traducción). */
+      title: string;
+      /** Clave de idioma del logro (ver `advancementKey`), o null si no se reconoce. */
+      key: string | null;
+      /** Nadie en el reino lo tenía antes (lo decide quien recibe el evento). */
+      first?: boolean;
+    }
   | { type: "server_start"; at: Date }
   | { type: "server_stop"; at: Date };
 
@@ -89,6 +100,7 @@ export class LogParser {
         player: r[1] ?? "",
         kind: ADVANCEMENT_KINDS[r[2] ?? ""] ?? "task",
         title: this.lang.fromEnglishAdvancementTitle(r[3] ?? ""),
+        key: this.lang.advancementKeyFromEnglishTitle(r[3] ?? ""),
       };
     }
     if (START_RE.test(message)) {

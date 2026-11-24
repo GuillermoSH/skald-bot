@@ -147,6 +147,13 @@ export const texts = {
       challenge: (p: string, t: string) => `🎖️ ${p} ha completado el desafío **[${t}]**.`,
       goal: (p: string, t: string) => `🎯 ${p} ha alcanzado la meta **[${t}]**.`,
     } satisfies Record<AdvancementKind, (p: string, t: string) => string>,
+    // Nadie en el reino lo había conseguido antes.
+    first: {
+      task: (p: string, t: string) => `🌟 **¡Primero del reino!** ${p} es el primer guerrero en conseguir el logro **[${t}]**.`,
+      challenge: (p: string, t: string) => `🌟 **¡Primero del reino!** ${p} es el primer guerrero en completar el desafío **[${t}]**.`,
+      goal: (p: string, t: string) => `🌟 **¡Primero del reino!** ${p} es el primer guerrero en alcanzar la meta **[${t}]**.`,
+    } satisfies Record<AdvancementKind, (p: string, t: string) => string>,
+    firstNote: "-# Ningún guerrero lo había logrado antes. Los skaldas lo cantarán por generaciones.",
     dropped: (n: number) => `-# …y ${n} avisos más que los cuervos no pudieron cargar.`,
   },
 
@@ -157,6 +164,7 @@ export const texts = {
     note: "-# Hazañas y caídas del registro de hoy.",
     deathEmoji: { combat: "⚔️", hel: "🪦" },
     advancementEmoji: { task: "🏆", challenge: "🎖️", goal: "🎯" } satisfies Record<AdvancementKind, string>,
+    firstEmoji: "🌟",
   },
 
   // Heraldo (#gjallarhorn). {m} = mención del usuario; {r} = referencia a las runas.

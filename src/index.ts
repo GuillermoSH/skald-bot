@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   Client,
   Events,
@@ -15,11 +16,13 @@ import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { BackupsUnavailableError } from "./core/backups.js";
 import { Chronicle } from "./core/chronicle.js";
+import { emptyFirsts, FirstsLedger, firstsSchema } from "./core/firsts.js";
 import { jarEnglishLoader, fetchSpanishLang, Translator } from "./core/lang.js";
 import { LogWatcher } from "./core/logwatch.js";
 import { NameResolver } from "./core/names.js";
 import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
+import { JsonStore } from "./core/state.js";
 import { Herald, heraldNeedsMembers } from "./herald.js";
 import { publishRules } from "./rules.js";
 import { fetchSendableChannel } from "./util/channels.js";
@@ -29,6 +32,8 @@ import { WorldDataUnavailableError, WorldStats } from "./core/stats.js";
 import { STARTING_PRESENCE, startPresenceLoop } from "./presence.js";
 import { log, setLogLevel } from "./util/log.js";
 import { texts } from "./util/texts.js";
+
+const FIRSTS_RECONCILE_MS = 15 * 60_000;
 
 function main(): void {
   let config;
@@ -65,10 +70,27 @@ function main(): void {
   };
 
   let alerts: AlertQueue | null = null;
+  let firsts: FirstsLedger | null = null;
   const watcher = new LogWatcher(config.DATA_DIR, ctx.lang, (event, live) => {
+    if (live && event.type === "advancement" && event.key && firsts?.claim(event.key, event.player, event.at)) {
+      event = { ...event, first: true };
+      log.info(`Primero del reino: ${event.player} → ${event.key}`);
+    }
     ctx.chronicle.add(event);
     if (live) alerts?.push(event);
   });
+
+  // Histórico de «primeros» desde los ficheros del mundo (en silencio).
+  const reconcileFirsts = async () => {
+    if (!firsts) return;
+    try {
+      const added = await firsts.reconcile(await ctx.world.players());
+      if (added > 0) log.info(`Primeros del reino: ${added} logros apuntados del histórico (${firsts.size} en total)`);
+    } catch (error) {
+      log.warn(`No se pudieron revisar los primeros del reino: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+  let firstsTimer: NodeJS.Timeout | null = null;
 
   const needsMembers = heraldNeedsMembers(config);
   const client = new Client({
@@ -121,9 +143,17 @@ function main(): void {
     }
   };
 
-  // Textos primero (para reconocer muertes y traducir), luego avisos y log.
+  // Textos primero (para reconocer muertes y traducir), luego el histórico de primeros, avisos y log.
   const startLogWatch = async (ready: Client<true>) => {
     await ctx.lang.ready();
+    try {
+      firsts = await FirstsLedger.open(new JsonStore(path.join(config.STATE_DIR, "firsts.json"), firstsSchema, emptyFirsts));
+    } catch (error) {
+      log.warn(`Sin estado de primeros del reino: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    await reconcileFirsts();
+    // Por si algo se escapa del log (o del bot apagado); en vivo manda el log.
+    firstsTimer = setInterval(() => void reconcileFirsts(), FIRSTS_RECONCILE_MS);
     const routes = await buildAlertRoutes(ready, config);
     if (routes.size > 0) {
       alerts = new AlertQueue(routes, {}, (error) => {
@@ -148,8 +178,9 @@ function main(): void {
     stopPresence();
     watcher.stop();
     backupWatcher?.stop();
+    if (firstsTimer) clearInterval(firstsTimer);
     alerts?.dispose();
-    void client.destroy().finally(() => process.exit(0));
+    void Promise.allSettled([firsts?.flush(), client.destroy()]).finally(() => process.exit(0));
   };
   process.once("SIGINT", () => { shutdown("SIGINT"); });
   process.once("SIGTERM", () => { shutdown("SIGTERM"); });

@@ -5,7 +5,7 @@
 #     skald/       este compose.yaml + .env
 #
 # No toca el stack del Minecraft: solo se une a su red para llegar a RCON y
-# monta sus carpetas en solo lectura.
+# monta sus carpetas en solo lectura. Su estado va en un volumen propio (skald_state).
 name: skald
 
 services:
@@ -33,12 +33,20 @@ services:
         target: /backups
         read_only: true
         bind: { create_host_path: false }
+      # Lo único escribible: el estado propio de Skald (primeros del reino...).
+      # Volumen de Docker aparte, fuera de la carpeta del Minecraft.
+      - type: volume
+        source: state
+        target: /state
     networks: [minecraft]
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  state:
 
 networks:
   minecraft:

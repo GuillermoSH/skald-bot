@@ -34,7 +34,7 @@ Si se configura `ALERT_CHANNEL_ID`, Skald sigue el log del servidor y avisa en e
 
 - 🟢 entradas y 🔴 salidas (salir y volver en menos de 20 s no genera avisos),
 - muertes, en español: en combate, las valquirias se los llevan al **Valhalla**; las muertes sin gloria (caídas, lava, ahogamientos…) son para **Hel**,
-- 🏆 logros, 🎖️ desafíos y 🎯 metas, con su nombre en español,
+- 🏆 logros, 🎖️ desafíos y 🎯 metas, con su nombre en español; 🌟 **primero del reino** si nadie lo había conseguido antes (el histórico sale de los ficheros del mundo),
 - 🔥 arranque y 🌑 parada del servidor.
 
 Los avisos se agrupan y tienen un límite por minuto. `ALERT_EVENTS` elige qué tipos se avisan, y cada tipo puede ir a su propio canal (`ALERT_CHANNEL_JOIN`, `_LEAVE`, `_DEATH`, `_ADVANCEMENT`, `_SERVER`); los que no tengan canal propio van a `ALERT_CHANNEL_ID`. El bot necesita en ese canal los permisos *Ver canal*, *Enviar mensajes* e *Insertar enlaces*; si falta alguno, lo dice en su log al arrancar.
@@ -70,7 +70,7 @@ Con `COMMAND_CHANNEL_IDS`, Skald solo responde a los comandos en esos canales (y
 
 ## Diseño y seguridad
 
-- **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura.
+- **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura. Lo poco que recuerda (los primeros del reino) lo guarda en `STATE_DIR`, un volumen propio; la configuración rechaza que esté dentro del mundo.
 - **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
 - **Sin menciones.** Todas las respuestas se envían con `allowedMentions: { parse: [] }`, y el texto que viene del servidor (MOTD, nombres) se escapa.
 - **Configuración validada al arrancar.** Si falta una variable obligatoria, el bot no arranca, y los errores nunca muestran valores (pueden ser secretos).
@@ -126,6 +126,7 @@ Rellena `.env`:
 | `ADMIN_CHANNEL_ID` | No | Canal privado de administración (avisos de copias) |
 | `BACKUP_MAX_AGE_HOURS` | No | Horas sin copia nueva antes de avisar (por defecto 26) |
 | `BACKUPS_DIR` | No | Carpeta de copias (por defecto `/backups`, la del contenedor) |
+| `STATE_DIR` | No | Estado propio de Skald, lo único que escribe (por defecto `/state`; nunca dentro de `DATA_DIR`) |
 | `HERALD_CHANNEL_ID` | No | Canal de bienvenidas, despedidas y boosts |
 | `RULES_CHANNEL_ID` | No | Canal de normas, donde Skald mantiene su mensaje |
 | `AUTO_ROLE_ID` | No | Rol que se da automáticamente al entrar |
@@ -155,7 +156,7 @@ Cada push a `main` que pasa las comprobaciones publica la imagen en GHCR:
 - `ghcr.io/guillermosh/skald-bot:latest`
 - `ghcr.io/guillermosh/skald-bot:sha-<commit>` (para fijar o volver a una versión concreta)
 
-`deploy/compose.yaml` es un stack independiente que se coloca junto al del servidor de Minecraft. No toca ese stack: se une a su red para llegar a RCON (sin publicar puertos) y monta `data/` y `backups/` en **solo lectura**. El contenedor corre como usuario sin privilegios (UID 1000), con el sistema de ficheros en solo lectura y sin *capabilities*.
+`deploy/compose.yaml` es un stack independiente que se coloca junto al del servidor de Minecraft. No toca ese stack: se une a su red para llegar a RCON (sin publicar puertos) y monta `data/` y `backups/` en **solo lectura**; su estado va en un volumen de Docker propio (`skald_state`). El contenedor corre como usuario sin privilegios (UID 1000), con el sistema de ficheros en solo lectura y sin *capabilities*.
 
 ```
 /opt/stacks/

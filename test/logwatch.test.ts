@@ -25,7 +25,14 @@ describe("LogParser", () => {
         spanish: "Ragnar ha explotado por Creeper",
         combat: true,
       },
-      { type: "advancement", at: undefined, player: "Ragnar", kind: "task", title: "Cálidos destinos turísticos" },
+      {
+        type: "advancement",
+        at: undefined,
+        player: "Ragnar",
+        kind: "task",
+        title: "Cálidos destinos turísticos",
+        key: "advancements.nether.explore_nether.title",
+      },
       {
         type: "death",
         at: undefined,

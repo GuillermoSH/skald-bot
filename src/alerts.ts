@@ -60,6 +60,7 @@ export class AlertFormatter {
       case "server_stop":
         return t.serverStop;
       case "advancement":
+        if (event.first) return `${t.first[event.kind](bold(event.player), safeText(event.title, 100))}\n${t.firstNote}`;
         return t.advancement[event.kind](bold(event.player), safeText(event.title, 100));
       case "death": {
         const phrases = event.combat ? t.valhalla : t.hel;

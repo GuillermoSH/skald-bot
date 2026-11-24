@@ -242,6 +242,11 @@ export class Translator {
     return bracketed ? `[${translated}]` : translated;
   }
 
+  /** Clave de idioma del logro a partir de su título en inglés del log, o null si no se conoce. */
+  advancementKeyFromEnglishTitle(title: string): string | null {
+    return this.englishTitles.get(title) ?? null;
+  }
+
   /** "Hot Tourist Destinations" → "Cálidos destinos turísticos"; si no, igual. */
   fromEnglishAdvancementTitle(title: string): string {
     const key = this.englishTitles.get(title);
@@ -253,7 +258,7 @@ export class Translator {
   /** "minecraft:nether/explore_nether" → "Cálidos destinos turísticos". */
   advancement(id: string): string {
     const { ns, name } = splitId(id);
-    return this.es.get(`advancements.${name.replaceAll("/", ".")}.title`) ?? prettify(name.split("/").pop() ?? name, ns);
+    return this.es.get(advancementKey(id)) ?? prettify(name.split("/").pop() ?? name, ns);
   }
 
   /** "minecraft:zombified_piglin" → "Piglin zombificado". */
@@ -267,6 +272,15 @@ export class Translator {
     const { ns, name } = splitId(id);
     return this.es.get(`block.${ns}.${name}`) ?? this.es.get(`item.${ns}.${name}`) ?? prettify(name, ns);
   }
+}
+
+/**
+ * Clave de idioma del título de un logro: "minecraft:nether/explore_nether" →
+ * "advancements.nether.explore_nether.title". Es la misma que sale del título del
+ * log, así que sirve para identificar un logro venga de donde venga.
+ */
+export function advancementKey(id: string): string {
+  return `advancements.${splitId(id).name.replaceAll("/", ".")}.title`;
 }
 
 function splitId(id: string): { ns: string; name: string } {

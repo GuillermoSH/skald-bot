@@ -33,6 +33,9 @@ LABEL org.opencontainers.image.title="Skald" \
       org.opencontainers.image.description="Bot de Discord de consulta y avisos para un servidor de Minecraft Java" \
       org.opencontainers.image.source="https://github.com/GuillermoSH/skald-bot"
 
+# Carpeta del estado propio (volumen aparte): al crearse el volumen hereda este dueño.
+RUN mkdir /state && chown node:node /state
+
 # Usuario sin privilegios (UID 1000): lee los ficheros del mundo montados en solo lectura.
 USER node
 CMD ["node", "dist/index.js"]

@@ -143,8 +143,25 @@ describe("AlertFormatter", () => {
 
   it("escapa nombres y no permite menciones", () => {
     const f = new AlertFormatter();
-    const line = f.format({ type: "advancement", at, player: "Ragnar_X", kind: "goal", title: "@everyone *gana*" });
+    const line = f.format({ type: "advancement", at, player: "Ragnar_X", kind: "goal", title: "@everyone *gana*", key: null });
     expect(line).toContain("Ragnar\\_X");
     expect(line).not.toContain("@everyone");
+  });
+});
+
+describe("AlertFormatter · primero del reino", () => {
+  it("destaca el primer logro del reino", () => {
+    const line = new AlertFormatter().format({
+      type: "advancement",
+      at: new Date(),
+      player: "Ragnar",
+      kind: "challenge",
+      title: "Cálidos destinos turísticos",
+      key: "advancements.nether.explore_nether.title",
+      first: true,
+    });
+    expect(line).toContain("¡Primero del reino!");
+    expect(line).toContain("**Ragnar**");
+    expect(line).toContain("desafío **[Cálidos destinos turísticos]**");
   });
 });

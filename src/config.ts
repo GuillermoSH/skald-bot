@@ -1,3 +1,4 @@
+import path from "node:path";
 import { z } from "zod";
 
 /** ID de Discord (snowflake): 17-20 dígitos. */
@@ -75,9 +76,20 @@ export const configSchema = discordSchema.extend({
 
   DATA_DIR: z.string().min(1).default("/data"),
   BACKUPS_DIR: z.string().min(1).default("/backups"),
+  // Estado propio de Skald (escribible; nunca dentro de DATA_DIR).
+  STATE_DIR: z.string().min(1).default("/state"),
 
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+}).refine((c) => !isInside(c.STATE_DIR, c.DATA_DIR), {
+  // El mundo es sagrado: Skald nunca escribe en él.
+  message: "no puede estar dentro de DATA_DIR",
+  path: ["STATE_DIR"],
 });
+
+function isInside(child: string, parent: string): boolean {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
 
 export type DiscordConfig = z.infer<typeof discordSchema>;
 export type Config = z.infer<typeof configSchema>;

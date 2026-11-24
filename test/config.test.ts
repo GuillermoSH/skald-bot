@@ -56,3 +56,14 @@ describe("configuración del heraldo", () => {
     expect(() => loadConfig({ ...valid, AUTO_ROLE_ID: "Viajero" })).toThrow(/AUTO_ROLE_ID/);
   });
 });
+
+describe("STATE_DIR", () => {
+  it("por defecto /state", () => {
+    expect(loadConfig(valid).STATE_DIR).toBe("/state");
+  });
+  it("nunca dentro de la carpeta del mundo", () => {
+    expect(() => loadConfig({ ...valid, DATA_DIR: "/data", STATE_DIR: "/data/skald" })).toThrow(/STATE_DIR/);
+    expect(() => loadConfig({ ...valid, DATA_DIR: "/data", STATE_DIR: "/data" })).toThrow(/STATE_DIR/);
+    expect(loadConfig({ ...valid, DATA_DIR: "/data", STATE_DIR: "/data-skald" }).STATE_DIR).toBe("/data-skald");
+  });
+});

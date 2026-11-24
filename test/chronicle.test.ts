@@ -7,8 +7,8 @@ describe("Chronicle", () => {
   it("devuelve los más recientes primero, filtrando por tipo", () => {
     const c = new Chronicle(10);
     c.add({ type: "join", at, player: "Aaa" });
-    c.add({ type: "advancement", at, player: "Aaa", kind: "task", title: "Uno" });
-    c.add({ type: "advancement", at, player: "Bbb", kind: "goal", title: "Dos" });
+    c.add({ type: "advancement", at, player: "Aaa", kind: "task", title: "Uno", key: null });
+    c.add({ type: "advancement", at, player: "Bbb", kind: "goal", title: "Dos", key: null });
     expect(c.recent(["advancement"], 5).map((e) => e.title)).toEqual(["Dos", "Uno"]);
   });
 

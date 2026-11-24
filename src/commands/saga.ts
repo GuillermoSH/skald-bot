@@ -17,7 +17,8 @@ export const saga: Command = {
         const emoji = e.combat ? t.deathEmoji.combat : t.deathEmoji.hel;
         return `${emoji} ${safeText(e.spanish ?? e.english, 200)} · ${when}`;
       }
-      return `${t.advancementEmoji[e.kind]} **${safeText(e.player, 32)}** · [${safeText(e.title, 100)}] · ${when}`;
+      const emoji = e.first ? t.firstEmoji : t.advancementEmoji[e.kind];
+      return `${emoji} **${safeText(e.player, 32)}** · [${safeText(e.title, 100)}] · ${when}`;
     });
 
     const description = lines.length > 0 ? `${lines.join("\n")}\n\n${t.note}` : t.empty;
