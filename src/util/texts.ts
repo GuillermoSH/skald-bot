@@ -104,6 +104,24 @@ export const texts = {
     } satisfies Record<MetricId, { emoji: string; label: string; hint?: string }>,
   },
 
+  // /hel
+  hel: {
+    optionName: "guerrero",
+    optionDescription: "Solo las muertes de este guerrero (opcional)",
+    title: "💀 Los dominios de Hel",
+    titleFor: (name: string) => `💀 Las desgracias de ${name}`,
+    lead: "Lo que más almas ha enviado al otro lado:",
+    leadFor: (name: string) => `Lo que más veces ha enviado a ${name} al otro lado:`,
+    combatEmoji: "⚔️",
+    helEmoji: "🪦",
+    unknownCause: "Causas que ni Hel conoce",
+    split: (valhalla: string, hel: string) => `⚔️ Al Valhalla: **${valhalla}** · 🪦 A Hel: **${hel}**`,
+    total: (n: string) => `-# ${n} muertes en todos los registros del reino.`,
+    totalFor: (name: string, n: string) => `-# ${n} muertes de ${name} en los registros del reino.`,
+    empty: "Nadie ha muerto aún en el reino. Hel se impacienta.",
+    emptyFor: (name: string) => `${name} no ha muerto nunca… de momento. Hel tiene paciencia.`,
+  },
+
   // /duelo
   duelo: {
     optionA: "guerrero",

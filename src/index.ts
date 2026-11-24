@@ -16,6 +16,7 @@ import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { BackupsUnavailableError } from "./core/backups.js";
 import { Chronicle } from "./core/chronicle.js";
+import { DeathArchive } from "./core/deaths.js";
 import { emptyFirsts, FirstsLedger, firstsSchema } from "./core/firsts.js";
 import { emptyMilestones, MilestoneTracker, milestonesSchema } from "./core/milestones.js";
 import { jarEnglishLoader, fetchSpanishLang, Translator } from "./core/lang.js";
@@ -53,6 +54,14 @@ function main(): void {
   }
   setLogLevel(config.LOG_LEVEL);
 
+  const lang = new Translator(
+    async () => {
+      const status = await getServerStatus(config.MC_HOST, config.MC_PORT, config.RCON_TIMEOUT_MS);
+      return status.online ? status.version : null;
+    },
+    fetchSpanishLang,
+    jarEnglishLoader(config.DATA_DIR),
+  );
   const ctx: CommandContext = {
     config,
     rcon: new RconClient({
@@ -63,15 +72,9 @@ function main(): void {
     }),
     world: new WorldStats(config.DATA_DIR),
     names: new NameResolver(config.DATA_DIR),
-    lang: new Translator(
-      async () => {
-        const status = await getServerStatus(config.MC_HOST, config.MC_PORT, config.RCON_TIMEOUT_MS);
-        return status.online ? status.version : null;
-      },
-      fetchSpanishLang,
-      jarEnglishLoader(config.DATA_DIR),
-    ),
+    lang,
     chronicle: new Chronicle(),
+    deaths: new DeathArchive(config.DATA_DIR, lang),
   };
 
   let alerts: AlertQueue | null = null;

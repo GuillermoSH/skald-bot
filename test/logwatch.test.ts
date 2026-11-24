@@ -24,6 +24,7 @@ describe("LogParser", () => {
         english: "Ragnar was blown up by Creeper",
         spanish: "Ragnar ha explotado por Creeper",
         combat: true,
+        cause: { key: "death.attack.explosion.player", killer: "Creeper" },
       },
       {
         type: "advancement",
@@ -40,6 +41,7 @@ describe("LogParser", () => {
         english: "Ragnar fell from a high place",
         spanish: "Ragnar ha caído desde muy alto",
         combat: false,
+        cause: { key: "death.fell.accident.generic", killer: null },
       },
       { type: "leave", at: undefined, player: "Ragnar" },
       { type: "server_stop", at: undefined },

@@ -3,6 +3,7 @@ import { cronica } from "./cronica.js";
 import { duelo } from "./duelo.js";
 import { gestas } from "./gestas.js";
 import { guerreros } from "./guerreros.js";
+import { hel } from "./hel.js";
 import { mapa } from "./mapa.js";
 import { memoria } from "./memoria.js";
 import { reino } from "./reino.js";
@@ -16,6 +17,7 @@ export const commands: readonly Command[] = [
   gestas,
   cronica,
   duelo,
+  hel,
   saga,
   memoria,
   runas,

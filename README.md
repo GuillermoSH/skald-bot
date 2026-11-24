@@ -15,6 +15,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/gestas <categoría>` | Rankings: tiempo jugado, muertes, mobs, distancia… y otros menos serios (pasto de creepers, muertes tontas, lanzahuevos, rage quit…) |
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
 | `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
+| `/hel [guerrero]` | Qué mata más en el reino (o a un guerrero): causas de muerte de todos los logs, Valhalla contra Hel |
 | `/saga` | Las últimas muertes y logros del reino |
 | `/memoria` | Estado de las copias de seguridad: última copia, tamaño e historial |
 | `/runas` | Versión, cargador y datos técnicos del servidor |

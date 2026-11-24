@@ -26,6 +26,8 @@ export type LogEvent =
       spanish: string | null;
       /** Murió a manos de alguien (mob o jugador). */
       combat: boolean;
+      /** Plantilla (`death.*`) y asesino en inglés tal cual sale en el log; null sin plantillas. */
+      cause?: { key: string; killer: string | null } | null;
     }
   | {
       type: "advancement";
@@ -121,6 +123,7 @@ export class LogParser {
         english: message,
         spanish: this.lang.renderDeath(death),
         combat: death.combat,
+        cause: { key: death.key, killer: death.combat ? (death.args[1] ?? null) : null },
       };
     }
 
@@ -134,6 +137,7 @@ export class LogParser {
         english: message,
         spanish: null,
         combat: / by /.test(r[2] ?? ""),
+        cause: null,
       };
     }
     return null;

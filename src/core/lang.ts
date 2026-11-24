@@ -231,6 +231,17 @@ export class Translator {
     return fillTemplate(template, args);
   }
 
+  /**
+   * La causa de una muerte sin asesino, sin el jugador: "death.attack.drown" →
+   * "Se ha ahogado". null si no hay plantilla en español.
+   */
+  deathCause(key: string): string | null {
+    const template = this.es.get(key);
+    if (!template) return null;
+    const text = template.replace(/%(\d+\$)?s/g, "").replace(/\s+/g, " ").trim();
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : null;
+  }
+
   // ---- del inglés del log al español
 
   /** "Zombified Piglin" → "Piglin zombificado"; "[Iron Spear]" → "[Lanza de hierro]"; si no, igual. */
