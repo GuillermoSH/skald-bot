@@ -18,6 +18,7 @@ export class NameResolver {
   private readonly known = new Map<string, string>();
   private readonly failedAt = new Map<string, number>();
   private usercacheAt = 0;
+  private usercacheLoading: Promise<void> | null = null;
 
   constructor(
     private readonly dataDir: string,
@@ -45,9 +46,18 @@ export class NameResolver {
     return out;
   }
 
-  private async refreshUsercache(): Promise<void> {
-    if (Date.now() - this.usercacheAt < this.ttlMs) return;
-    this.usercacheAt = Date.now();
+  private refreshUsercache(): Promise<void> {
+    // Las consultas simultáneas esperan a la misma lectura (si no, verían el mapa aún vacío).
+    if (this.usercacheLoading) return this.usercacheLoading;
+    if (Date.now() - this.usercacheAt < this.ttlMs) return Promise.resolve();
+    this.usercacheLoading = this.readUsercache().finally(() => {
+      this.usercacheAt = Date.now();
+      this.usercacheLoading = null;
+    });
+    return this.usercacheLoading;
+  }
+
+  private async readUsercache(): Promise<void> {
     try {
       const raw = JSON.parse(await readFile(path.join(this.dataDir, "usercache.json"), "utf8")) as unknown;
       for (const { name, uuid } of usercacheSchema.parse(raw)) {

@@ -104,6 +104,28 @@ export const texts = {
     } satisfies Record<MetricId, { emoji: string; label: string; hint?: string }>,
   },
 
+  // /duelo
+  duelo: {
+    optionA: "guerrero",
+    optionB: "rival",
+    optionADescription: "Quien lanza el desafío",
+    optionBDescription: "Quien lo recibe",
+    title: "⚔️ Duelo en el reino",
+    versus: (a: string, b: string) => `## ${a} 🆚 ${b}`,
+    lowerWinsNote: "-# En las muertes gana quien menos tiene: morir no es ninguna hazaña.",
+    winner: (name: string, won: number, lost: number) => `## 🏆 ${name} gana ${won} a ${lost}`,
+    tie: (n: number) => `## 🤝 Empate a ${n}`,
+    verdicts: [
+      "Los skaldas ya afinan el arpa para cantarlo.",
+      "Las valquirias han tomado nota.",
+      "Odín observa desde Hliðskjálf y asiente.",
+      "Que el vencido invite al hidromiel.",
+    ],
+    tieVerdict: "Ni los dioses se ponen de acuerdo. Habrá revancha.",
+    sameWarrior: "Un guerrero no puede batirse consigo mismo… salvo en Hel.",
+    note: "-# Según el último guardado del mundo (cada ~5 min).",
+  },
+
   // /cronica
   cronica: {
     optionName: "guerrero",

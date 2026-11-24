@@ -1,11 +1,12 @@
 import { SlashCommandBuilder, time, TimestampStyles } from "discord.js";
 import { METRICS } from "../core/metrics.js";
-import { stat, topStat, type PlayerRecord } from "../core/stats.js";
+import { stat, topStat } from "../core/stats.js";
 import { baseEmbed } from "../util/embeds.js";
 import { isValidPlayerName, safeText } from "../util/escape.js";
 import { formatCount, formatDistance, formatDuration } from "../util/format.js";
 import { texts } from "../util/texts.js";
-import type { Command, CommandContext } from "./types.js";
+import { autocompletePlayers, findPlayer } from "./players.js";
+import type { Command } from "./types.js";
 
 const t = texts.cronica;
 
@@ -17,17 +18,7 @@ export const cronica: Command = {
       o.setName(t.optionName).setDescription(t.optionDescription).setRequired(true).setAutocomplete(true),
     ),
 
-  async autocomplete(interaction, { world, names }) {
-    const typed = interaction.options.getFocused().toLowerCase();
-    const players = await world.players();
-    const known = await names.peek(players.map((p) => p.uuid));
-    const choices = [...known.values()]
-      .filter((name) => name.toLowerCase().includes(typed))
-      .sort((a, b) => a.localeCompare(b, "es"))
-      .slice(0, 25)
-      .map((name) => ({ name, value: name }));
-    await interaction.respond(choices);
-  },
+  autocomplete: autocompletePlayers,
 
   async execute(interaction, ctx) {
     const requested = interaction.options.getString(t.optionName, true).trim();
@@ -99,17 +90,3 @@ export const cronica: Command = {
     await interaction.editReply({ embeds: [embed] });
   },
 };
-
-async function findPlayer(
-  requested: string,
-  { world, names }: CommandContext,
-): Promise<{ player: PlayerRecord; name: string } | null> {
-  const players = await world.players();
-  const resolved = await names.resolve(players.map((p) => p.uuid));
-  const wanted = requested.toLowerCase();
-  for (const player of players) {
-    const name = resolved.get(player.uuid);
-    if (name?.toLowerCase() === wanted) return { player, name };
-  }
-  return null;
-}

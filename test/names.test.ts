@@ -47,3 +47,21 @@ describe("NameResolver", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("NameResolver · consultas simultáneas", () => {
+  it("todas ven el usercache, sin ir a Mojang", async () => {
+    let calls = 0;
+    const fakeFetch = (() => {
+      calls++;
+      return Promise.reject(new Error("sin red"));
+    }) as unknown as typeof fetch;
+    const r = new NameResolver(DATA, fakeFetch);
+    const [a, b] = await Promise.all([
+      r.resolve(["11111111-1111-4111-8111-111111111111"]),
+      r.resolve(["33333333-3333-4333-8333-333333333333"]),
+    ]);
+    expect(a.get("11111111-1111-4111-8111-111111111111")).toBe("Ragnar");
+    expect(b.get("33333333-3333-4333-8333-333333333333")).toBe("Floki");
+    expect(calls).toBe(0);
+  });
+});

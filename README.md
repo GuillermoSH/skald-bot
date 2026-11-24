@@ -14,6 +14,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/guerreros` | Quién está conectado ahora mismo |
 | `/gestas <categoría>` | Rankings: tiempo jugado, muertes, mobs, distancia… y otros menos serios (pasto de creepers, muertes tontas, lanzahuevos, rage quit…) |
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
+| `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
 | `/saga` | Las últimas muertes y logros del reino |
 | `/memoria` | Estado de las copias de seguridad: última copia, tamaño e historial |
 | `/runas` | Versión, cargador y datos técnicos del servidor |
@@ -233,7 +234,7 @@ pnpm art   # escribe assets/*.gif y assets/runas.png
 
 - **Nombres en español** de logros, mobs y bloques: se descargan al arrancar de los servidores de recursos de Mojang, para la versión del servidor. Si no hay red, se muestran los ids en formato legible.
 - **Nombres de jugador** que ya no están en `usercache.json` (caducan a los 30 días): API pública de perfiles de Mojang.
-- **Cabezas de jugador** en `/cronica`: [mc-heads.net](https://mc-heads.net).
+- **Cabezas de jugador** en `/cronica` y `/duelo`: [mc-heads.net](https://mc-heads.net).
 
 ### Cuando sale una versión nueva de Minecraft
 
