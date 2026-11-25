@@ -88,6 +88,7 @@ Con `ECONOMY_ENABLED=true`, los jugadores ganan **monedas de plata** jugando. Sk
 - Lo jugado antes de activar la economía no se paga: la primera vez solo se apunta desde dónde se empieza a contar.
 - Las monedas son de la persona (su UUID de Minecraft) y se conservan entre temporadas. Todo movimiento queda en un libro que solo crece.
 - «El día» de los topes va por `TIMEZONE`.
+- **Regalo inicial** por lo jugado antes de activar la economía: `/regalo vista` (solo administradores, solo lo ve quien lo usa) enseña lo que tocaría a cada uno sin pagar nada, y `/regalo aplicar` lo reparte una sola vez. Tasa más baja que la normal (1 moneda cada 30 min, 10 enemigos, 100 bloques o 2 km) y tope de 500, porque ese tiempo incluye AFK. Quien aparezca después lo recibe al llegar.
 
 ### Comandos solo en ciertos canales
 

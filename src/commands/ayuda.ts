@@ -10,10 +10,11 @@ export function createAyuda(getCommands: () => readonly Command[]): Command {
     ephemeral: true,
 
     async execute(interaction) {
-      const lines = getCommands().map((c) => {
-        const json = c.data.toJSON();
-        return `**/${json.name}** · ${json.description}`;
-      });
+      // Los de administración (con permisos por defecto) no se anuncian.
+      const lines = getCommands()
+        .map((c) => c.data.toJSON())
+        .filter((json) => json.default_member_permissions == null)
+        .map((json) => `**/${json.name}** · ${json.description}`);
       await interaction.editReply({ embeds: [baseEmbed().setTitle(texts.helpTitle).setDescription(lines.join("\n"))] });
     },
   };

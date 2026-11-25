@@ -8,6 +8,7 @@ import { mapa } from "./mapa.js";
 import { memoria } from "./memoria.js";
 import { reino } from "./reino.js";
 import { runas } from "./runas.js";
+import { regalo } from "./regalo.js";
 import { saga } from "./saga.js";
 import { temporada } from "./temporada.js";
 import { tesoro } from "./tesoro.js";
@@ -23,6 +24,7 @@ export const commands: readonly Command[] = [
   saga,
   tesoro,
   temporada,
+  regalo,
   memoria,
   runas,
   mapa,

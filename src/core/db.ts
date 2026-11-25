@@ -77,6 +77,18 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (season_id, uuid, metric)
   );
   `,
+  // 3: de dónde se empezó a contar (para el regalo inicial por lo ya jugado).
+  `
+  CREATE TABLE stat_origins (
+    season_id INTEGER NOT NULL REFERENCES seasons (id),
+    uuid      TEXT NOT NULL,
+    metric    TEXT NOT NULL,
+    value     REAL NOT NULL,
+    PRIMARY KEY (season_id, uuid, metric)
+  );
+  -- Quien ya tenía línea base: su origen es esa línea (lo ganado desde entonces es poco).
+  INSERT INTO stat_origins (season_id, uuid, metric, value) SELECT season_id, uuid, metric, value FROM stat_baselines;
+  `,
 ];
 
 export class Database {

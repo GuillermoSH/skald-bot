@@ -178,6 +178,21 @@ export const texts = {
     disabled: "La economía del reino aún no está abierta.",
   },
 
+  // /regalo (solo administradores; respuestas que solo ve quien lo usa)
+  regalo: {
+    vistaDescription: "Lo que tocaría a cada guerrero por lo ya jugado (no paga nada)",
+    aplicarDescription: "Reparte el regalo inicial (una sola vez por guerrero)",
+    previewTitle: "🎁 Vista previa del regalo inicial",
+    formula: (cap: string) =>
+      `-# 1 moneda por cada 30 min jugados, 10 enemigos, 100 bloques o 2 km; tope de ${cap} por guerrero. Nada se paga hasta usar \`/regalo aplicar\`.`,
+    line: (name: string, total: string, parts: string, capped: boolean) => `**${name}** · 🪙 ${total}${capped ? " (tope)" : ""}\n-# ${parts}`,
+    total: (players: number, coins: string) => `**Total:** 🪙 ${coins} entre ${players} guerreros.`,
+    empty: "Aún no hay nadie de quien saber lo jugado: espera a la primera cuenta de Skald (~5 min tras activar la economía).",
+    applied: (players: number, coins: string) => `🎁 Regalo repartido: 🪙 ${coins} entre ${players} guerreros. Quien aparezca más tarde lo recibirá al llegar.`,
+    alreadyApplied: "El regalo de esta era ya se repartió.",
+    onlyJarl: "Solo el Jarl puede tocar el tesoro del reino.",
+  },
+
   // /duelo
   duelo: {
     optionA: "guerrero",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayIn, Economy } from "../src/core/economy.js";
+import { computeGift, dayIn, Economy, GIFT_CAP } from "../src/core/economy.js";
 import type { PlayerRecord } from "../src/core/stats.js";
 import { memoryRealm } from "./helpers.js";
 
@@ -89,5 +89,35 @@ describe("Economy", () => {
     const at = new Date("2026-11-25T23:30:00Z");
     expect(dayIn("UTC", at)).toBe("2026-11-25");
     expect(dayIn("Europe/Madrid", at)).toBe("2026-11-26");
+  });
+});
+
+describe("regalo inicial", () => {
+  it("fórmula con tasa baja y tope", () => {
+    expect(computeGift("a", { play_time: 36_000 * 3, mob_kills: 25, blocks_mined: 99, distance: 400_000 })).toEqual({
+      uuid: "a",
+      byCategory: { play_time: 3, mob_kills: 2, blocks_mined: 0, distance: 2 },
+      total: 7,
+      capped: false,
+    });
+    expect(computeGift("b", { play_time: 36_000 * 10_000 })).toMatchObject({ total: GIFT_CAP, capped: true });
+  });
+
+  it("vista previa sin pagar; aplicar paga una vez; quien llega después lo recibe al aparecer", () => {
+    const e = economy();
+    e.tick([p("a", { minutes: 300, kills: 100 })], T0);
+    expect(e.giftPreview()).toEqual([expect.objectContaining({ uuid: "a", total: 20 })]);
+    expect(e.balance("a")).toBe(0);
+
+    expect(e.applyGift(later(1))).toEqual({ players: 1, coins: 20 });
+    expect(e.applyGift(later(2))).toEqual({ players: 0, coins: 0 });
+    expect(e.giftApplied).toBe(true);
+    expect(e.balance("a")).toBe(20);
+    // El regalo no gasta el tope diario.
+    expect(e.earnedToday("a", later(3)).play_time).toBe(0);
+
+    expect(e.tick([p("a", { minutes: 300, kills: 100 }), p("b", { minutes: 60 })], later(5))).toEqual([
+      { uuid: "b", category: "initial", amount: 2 },
+    ]);
   });
 });

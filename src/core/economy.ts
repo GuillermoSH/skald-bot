@@ -38,9 +38,39 @@ export const EARN_RULES: Readonly<Record<EarnCategory, EarnRule>> = {
   distance: { value: (p) => METRICS.distance.value(p), per: 100_000, dailyCap: 30 },
 };
 
+/**
+ * Regalo inicial: un pago único por lo jugado antes de que la economía empezara a
+ * contar (el «origen» de cada jugador en la temporada). Tasa más baja que la del
+ * día a día, porque ese tiempo incluye AFK y no se puede filtrar, y con tope total.
+ */
+export const GIFT_RULES: Readonly<Record<EarnCategory, { per: number }>> = {
+  play_time: { per: 36_000 }, // 1 cada 30 min
+  mob_kills: { per: 10 },
+  blocks_mined: { per: 100 },
+  distance: { per: 200_000 }, // 1 cada 2 km
+};
+export const GIFT_CAP = 500;
+export const GIFT_REASON = "initial";
+
+export interface Gift {
+  uuid: string;
+  byCategory: Record<EarnCategory, number>;
+  /** Con el tope aplicado. */
+  total: number;
+  capped: boolean;
+}
+
+export function computeGift(uuid: string, origin: Partial<Record<EarnCategory, number>>): Gift {
+  const byCategory = Object.fromEntries(
+    EARN_CATEGORIES.map((c) => [c, Math.floor(Math.max(0, origin[c] ?? 0) / GIFT_RULES[c].per)]),
+  ) as Record<EarnCategory, number>;
+  const raw = EARN_CATEGORIES.reduce((sum, c) => sum + byCategory[c], 0);
+  return { uuid, byCategory, total: Math.min(raw, GIFT_CAP), capped: raw > GIFT_CAP };
+}
+
 export interface Earning {
   uuid: string;
-  category: EarnCategory;
+  category: EarnCategory | typeof GIFT_REASON;
   amount: number;
 }
 
@@ -75,9 +105,23 @@ export class Economy {
         );
         const current = new Map(EARN_CATEGORIES.map((c) => [c, this.rules[c].value(player)] as const));
 
-        // Primera vez en esta temporada: solo la línea base.
+        // Primera vez en esta temporada: solo la línea base (y su origen, para el regalo).
         if (base.size === 0) {
-          for (const [c, v] of current) this.setBaseline(player.uuid, c, v);
+          for (const [c, v] of current) {
+            this.setBaseline(player.uuid, c, v);
+            this.db.run(
+              "INSERT OR IGNORE INTO stat_origins (season_id, uuid, metric, value) VALUES (?, ?, ?, ?)",
+              this.seasonId,
+              player.uuid,
+              c,
+              v,
+            );
+          }
+          // Si el regalo ya se repartió, quien aparece ahora también lo recibe.
+          if (this.giftApplied) {
+            const gift = this.payGift(player.uuid, day, at);
+            if (gift) earnings.push({ uuid: player.uuid, category: GIFT_REASON, amount: gift });
+          }
           continue;
         }
 
@@ -116,6 +160,66 @@ export class Economy {
       }
       return earnings;
     });
+  }
+
+  /** El regalo de esta temporada ya se repartió (los que lleguen después, lo reciben al aparecer). */
+  get giftApplied(): boolean {
+    return this.db.getMeta(`gift_applied:${this.seasonId}`) !== null;
+  }
+
+  /** Lo que tocaría a cada uno (sin pagar nada), de más a menos. */
+  giftPreview(): Gift[] {
+    const rows = this.db.all<{ uuid: string; metric: string; value: number }>(
+      "SELECT uuid, metric, value FROM stat_origins WHERE season_id = ?",
+      this.seasonId,
+    );
+    const origins = new Map<string, Partial<Record<EarnCategory, number>>>();
+    for (const r of rows) {
+      const o = origins.get(r.uuid) ?? {};
+      if ((EARN_CATEGORIES as readonly string[]).includes(r.metric)) o[r.metric as EarnCategory] = r.value;
+      origins.set(r.uuid, o);
+    }
+    return [...origins].map(([uuid, o]) => computeGift(uuid, o)).sort((a, b) => b.total - a.total);
+  }
+
+  /** Reparte el regalo (una sola vez por persona). Devuelve lo pagado. */
+  applyGift(now = new Date()): { players: number; coins: number } {
+    const day = dayIn(this.timeZone, now);
+    const at = now.toISOString();
+    return this.db.transaction(() => {
+      let players = 0;
+      let coins = 0;
+      for (const { uuid } of this.giftPreview()) {
+        const paid = this.payGift(uuid, day, at);
+        if (paid) {
+          players++;
+          coins += paid;
+        }
+      }
+      this.db.setMeta(`gift_applied:${this.seasonId}`, at);
+      return { players, coins };
+    });
+  }
+
+  private payGift(uuid: string, day: string, at: string): number {
+    if (this.db.get("SELECT 1 AS x FROM ledger WHERE uuid = ? AND reason = ?", uuid, GIFT_REASON)) return 0;
+    const origin = Object.fromEntries(
+      this.db
+        .all<{ metric: string; value: number }>("SELECT metric, value FROM stat_origins WHERE season_id = ? AND uuid = ?", this.seasonId, uuid)
+        .map((r) => [r.metric, r.value]),
+    ) as Partial<Record<EarnCategory, number>>;
+    const gift = computeGift(uuid, origin);
+    if (gift.total <= 0) return 0;
+    this.db.run(
+      "INSERT INTO ledger (uuid, amount, reason, season_id, day, at) VALUES (?, ?, ?, ?, ?, ?)",
+      uuid,
+      gift.total,
+      GIFT_REASON,
+      this.seasonId,
+      day,
+      at,
+    );
+    return gift.total;
   }
 
   balance(uuid: string): number {
