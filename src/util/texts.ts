@@ -10,6 +10,20 @@ import type { TickState } from "../core/parsers.js";
 
 export const BOT_NAME = "Skald";
 
+/** 1 → I, 4 → IV, 12 → XII (para los nombres de las eras). */
+export function roman(n: number): string {
+  const table: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let rest = Math.max(1, Math.floor(n));
+  let out = "";
+  for (const [value, symbol] of table) {
+    while (rest >= value) {
+      out += symbol;
+      rest -= value;
+    }
+  }
+  return out;
+}
+
 /** "1 guerrero", "3 guerreros". */
 export function warriors(n: number): string {
   return `${n} ${n === 1 ? "guerrero" : "guerreros"}`;
@@ -151,10 +165,16 @@ export const texts = {
     announce: (name: string) => `# 🔥 Nace ${name}\nEl viejo reino arde a popa; el drakkar pone rumbo a tierras nuevas. Que los skaldas empiecen otra saga.`,
     summaryTitle: (name: string) => `📜 Así terminó ${name}`,
     announced: (n: number) => `-# Anunciado en ${n} ${n === 1 ? "canal" : "canales"}.`,
+    proposalButton: "Abrir era nueva",
+    modalTitle: "Abrir una era nueva",
+    modalLabel: "Nombre de la era",
+    modalDescription: "Se cierra la era actual (con su ranking) y se anuncia la nueva.",
+    defaultName: (n: number) => `Era ${roman(n)}`,
+    proposalDone: (name: string, user: string) => `✅ ${user} abrió **${name}**.`,
     // Aviso en el canal de administración.
     mismatchAlert: (level: string, season: string, old: string) =>
       `🌍 **Mundo nuevo detectado.** El servidor carga \`${level}\` y la era abierta es **${season}** (\`${old}\`).\n` +
-      "Primeros del reino, hitos y monedas quedan en pausa. Cuando esté listo, abre la nueva con `/temporada nueva`.",
+      "Primeros del reino, hitos y monedas quedan en pausa. Cuando esté listo, abre la nueva con el botón (o con `/temporada nueva`).",
   },
 
   // /tesoro

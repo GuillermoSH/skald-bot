@@ -1,4 +1,19 @@
-import { SlashCommandBuilder, time, TimestampStyles, type Client } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  LabelBuilder,
+  MessageFlags,
+  ModalBuilder,
+  SlashCommandBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  time,
+  TimestampStyles,
+  type ButtonInteraction,
+  type Client,
+  type ModalSubmitInteraction,
+} from "discord.js";
 import { alertChannelFor } from "../alerts.js";
 import type { Season } from "../core/seasons.js";
 import { asset } from "../util/assets.js";
@@ -42,13 +57,7 @@ export const temporada: Command = {
           await interaction.editReply({ content: t.onlyJarl });
           return;
         }
-        const name = safeText(interaction.options.getString(t.nameOption, true).trim(), 40);
-        const sameWorld = realm.pendingLevelName === null;
-        const { closed, opened } = await realm.openSeason(name);
-        const lines = [t.opened(closed ? safeText(closed.name, 40) : null, safeText(opened.name, 40))];
-        if (sameWorld && closed) lines.push(t.sameWorld(safeText(opened.levelName, 40)));
-        const announced = await announceEra(interaction.client, ctx, closed, opened.name);
-        if (announced > 0) lines.push(t.announced(announced));
+        const lines = await openEra(interaction.client, ctx, interaction.options.getString(t.nameOption, true));
         await interaction.editReply({ content: lines.join("\n") });
         return;
       }
@@ -83,6 +92,69 @@ export const temporada: Command = {
     }
   },
 };
+
+/** Abre la era (cierra la actual), la anuncia y devuelve la respuesta para el admin. */
+async function openEra(client: Client<true>, ctx: CommandContext, rawName: string): Promise<string[]> {
+  const name = safeText(rawName.trim(), 40) || t.defaultName((ctx.realm.seasons?.count ?? 0) + 1);
+  const sameWorld = ctx.realm.pendingLevelName === null;
+  const { closed, opened } = await ctx.realm.openSeason(name);
+  const lines = [t.opened(closed ? safeText(closed.name, 40) : null, safeText(opened.name, 40))];
+  if (sameWorld && closed) lines.push(t.sameWorld(safeText(opened.levelName, 40)));
+  const announced = await announceEra(client, ctx, closed, opened.name);
+  if (announced > 0) lines.push(t.announced(announced));
+  return lines;
+}
+
+// ---- propuesta en el canal de administración (botón → formulario con el nombre)
+
+export const SEASON_BUTTON_ID = "skald:season:open";
+const SEASON_MODAL_ID = "skald:season:name";
+const NAME_INPUT_ID = "name";
+
+export function seasonProposalRow(): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(SEASON_BUTTON_ID).setLabel(t.proposalButton).setEmoji("🔥").setStyle(ButtonStyle.Primary),
+  );
+}
+
+export async function handleSeasonButton(interaction: ButtonInteraction, ctx: CommandContext): Promise<void> {
+  if (!ctx.config.ADMIN_USER_IDS.includes(interaction.user.id)) {
+    await interaction.reply({ content: t.onlyJarl, flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const input = new TextInputBuilder()
+    .setCustomId(NAME_INPUT_ID)
+    .setStyle(TextInputStyle.Short)
+    .setMaxLength(40)
+    .setRequired(true)
+    .setValue(t.defaultName((ctx.realm.seasons?.count ?? 0) + 1));
+  const modal = new ModalBuilder()
+    .setCustomId(SEASON_MODAL_ID)
+    .setTitle(t.modalTitle)
+    .addLabelComponents(new LabelBuilder().setLabel(t.modalLabel).setDescription(t.modalDescription).setTextInputComponent(input));
+  await interaction.showModal(modal);
+}
+
+export function isSeasonModal(customId: string): boolean {
+  return customId === SEASON_MODAL_ID;
+}
+
+export async function handleSeasonModal(interaction: ModalSubmitInteraction, ctx: CommandContext): Promise<void> {
+  if (!ctx.config.ADMIN_USER_IDS.includes(interaction.user.id)) {
+    await interaction.reply({ content: t.onlyJarl, flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const lines = await openEra(interaction.client, ctx, interaction.fields.getTextInputValue(NAME_INPUT_ID));
+  await interaction.editReply({ content: lines.join("\n") });
+  // El aviso ya no hace falta: se quita el botón y se dice quién la abrió.
+  const opened = ctx.realm.season;
+  if (interaction.message && opened) {
+    await interaction.message
+      .edit({ components: [], content: t.proposalDone(safeText(opened.name, 40), `<@${interaction.user.id}>`), allowedMentions: { parse: [] } })
+      .catch(() => undefined);
+  }
+}
 
 /**
  * Anuncio público de la era nueva en los canales de avisos del servidor y de los

@@ -1,5 +1,9 @@
 import {
+  ActionRowBuilder,
   Client,
+  type ButtonBuilder,
+  type ButtonInteraction,
+  type ModalSubmitInteraction,
   Events,
   GatewayIntentBits,
   MessageFlags,
@@ -11,6 +15,7 @@ import { AlertQueue, buildAlertRoutes } from "./alerts.js";
 import { BackupWatcher } from "./backup-watch.js";
 import { isCommandChannelAllowed } from "./commands/guard.js";
 import { commandsByName } from "./commands/index.js";
+import { handleSeasonButton, handleSeasonModal, isSeasonModal, SEASON_BUTTON_ID, seasonProposalRow } from "./commands/temporada.js";
 import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { BackupsUnavailableError } from "./core/backups.js";
@@ -97,12 +102,12 @@ function main(): void {
 
   // Aviso al canal de administración (mundo nuevo sin temporada...). El canal se abre una vez.
   let adminChannel: ReturnType<typeof fetchSendableChannel> | null = null;
-  const adminSay = async (message: string) => {
+  const adminSay = async (message: string, components: ActionRowBuilder<ButtonBuilder>[] = []) => {
     if (!config.ADMIN_CHANNEL_ID) return;
     if (!client.isReady()) return;
     adminChannel ??= fetchSendableChannel(client, config.ADMIN_CHANNEL_ID, "administración");
     const channel = await adminChannel;
-    await channel?.send({ embeds: [baseEmbed().setDescription(message)], allowedMentions: { parse: [] } });
+    await channel?.send({ embeds: [baseEmbed().setDescription(message)], components, allowedMentions: { parse: [] } });
   };
 
   // Revisión periódica: temporada, primeros, hitos (al canal de los logros) y monedas.
@@ -111,7 +116,10 @@ function main(): void {
       const newWorld = await realm.checkSeason();
       const season = realm.season;
       if (newWorld && season) {
-        await adminSay(texts.temporada.mismatchAlert(safeText(newWorld, 40), safeText(season.name, 40), safeText(season.levelName, 40)));
+        await adminSay(
+          texts.temporada.mismatchAlert(safeText(newWorld, 40), safeText(season.name, 40), safeText(season.levelName, 40)),
+          [seasonProposalRow()],
+        );
       }
       const { milestones, earnings } = await realm.tick();
       if (earnings.length > 0) log.debug(`Monedas: ${earnings.map((e) => `${e.uuid.slice(0, 8)} +${e.amount} ${e.category}`).join(", ")}`);
@@ -212,6 +220,8 @@ function main(): void {
   client.on(Events.InteractionCreate, (interaction) => {
     if (interaction.isChatInputCommand()) void handleCommand(interaction, ctx);
     else if (interaction.isAutocomplete()) void handleAutocomplete(interaction, ctx);
+    else if (interaction.isButton() && interaction.customId === SEASON_BUTTON_ID) void handleComponent(interaction, () => handleSeasonButton(interaction, ctx));
+    else if (interaction.isModalSubmit() && isSeasonModal(interaction.customId)) void handleComponent(interaction, () => handleSeasonModal(interaction, ctx));
   });
 
   const shutdown = (signal: string) => {
@@ -279,6 +289,19 @@ async function handleCommand(interaction: ChatInputCommandInteraction, ctx: Comm
       log.error(`/${interaction.commandName} falló`, error);
     }
     await replyError(interaction, message);
+  }
+}
+
+/** Botones y formularios: si algo falla, se dice (solo a quien lo usó) y queda en el log. */
+async function handleComponent(interaction: ButtonInteraction | ModalSubmitInteraction, run: () => Promise<void>): Promise<void> {
+  if (interaction.guildId === null) return;
+  try {
+    await run();
+  } catch (error) {
+    log.error(`Interacción ${interaction.customId} falló`, error);
+    const content = texts.ravensSilent;
+    if (interaction.deferred || interaction.replied) await interaction.editReply({ content }).catch(() => undefined);
+    else await interaction.reply({ content, flags: MessageFlags.Ephemeral }).catch(() => undefined);
   }
 }
 

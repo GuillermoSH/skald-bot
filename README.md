@@ -71,7 +71,7 @@ Necesita el *Server Members Intent* activado en el portal de desarrolladores (pe
 
 ### Temporadas (eras)
 
-Cada mundo es una **temporada**. Los primeros del reino, los hitos y las monedas ganadas se apuntan con la temporada en la que pasaron, así que un mundo nuevo empieza con todo por estrenar. Skald nunca cambia de temporada solo: si el `level-name` del servidor deja de coincidir con el de la temporada abierta, lo avisa en el canal de administración y deja esas cuentas en pausa hasta que un administrador (`ADMIN_USER_IDS`) use `/temporada nueva`. Al cerrarse, la temporada guarda su ranking final, que se ve en `/temporada historial`.
+Cada mundo es una **temporada**. Los primeros del reino, los hitos y las monedas ganadas se apuntan con la temporada en la que pasaron, así que un mundo nuevo empieza con todo por estrenar. Skald nunca cambia de temporada solo: si el `level-name` del servidor deja de coincidir con el de la temporada abierta, lo avisa en el canal de administración, con un botón **«Abrir era nueva»** que pide el nombre, y deja esas cuentas en pausa hasta que un administrador (`ADMIN_USER_IDS`) la abra (con el botón o con `/temporada nueva`). La era nueva se anuncia en los canales de avisos con su imagen y el resumen de la anterior. Al cerrarse, la temporada guarda su ranking final, que se ve en `/temporada historial`.
 
 ### Economía
 
