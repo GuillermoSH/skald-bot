@@ -2,10 +2,10 @@
 #
 #   /opt/stacks/
 #     minecraft/   compose del servidor (con data/ y backups/)
-#     skald/       este compose.yaml + .env
+#     skald/       este compose.yaml + .env + state/
 #
 # No toca el stack del Minecraft: solo se une a su red para llegar a RCON y
-# monta sus carpetas en solo lectura. Su estado va en un volumen propio (skald_state).
+# monta sus carpetas en solo lectura. Su estado va en ./state (base de datos SQLite).
 name: skald
 
 services:
@@ -33,20 +33,19 @@ services:
         target: /backups
         read_only: true
         bind: { create_host_path: false }
-      # Lo único escribible: el estado propio de Skald (primeros del reino...).
-      # Volumen de Docker aparte, fuera de la carpeta del Minecraft.
-      - type: volume
-        source: state
+      # Lo único escribible: el estado propio de Skald (base de datos SQLite y sus
+      # copias diarias). Carpeta junto a este compose, fuera de la del Minecraft, para
+      # que entre en las copias de la máquina. Debe existir y ser del UID 1000.
+      - type: bind
+        source: ./state
         target: /state
+        bind: { create_host_path: false }
     networks: [minecraft]
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-
-volumes:
-  state:
 
 networks:
   minecraft:
