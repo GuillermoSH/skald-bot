@@ -1,4 +1,9 @@
-import { SlashCommandBuilder, time, TimestampStyles } from "discord.js";
+import { SlashCommandBuilder, time, TimestampStyles, type Client } from "discord.js";
+import { alertChannelFor } from "../alerts.js";
+import type { Season } from "../core/seasons.js";
+import { asset } from "../util/assets.js";
+import { fetchSendableChannel } from "../util/channels.js";
+import { log } from "../util/log.js";
 import { METRICS } from "../core/metrics.js";
 import type { FinalRanking } from "../realm.js";
 import { FINAL_RANKING_METRICS } from "../realm.js";
@@ -42,6 +47,8 @@ export const temporada: Command = {
         const { closed, opened } = await realm.openSeason(name);
         const lines = [t.opened(closed ? safeText(closed.name, 40) : null, safeText(opened.name, 40))];
         if (sameWorld && closed) lines.push(t.sameWorld(safeText(opened.levelName, 40)));
+        const announced = await announceEra(interaction.client, ctx, closed, opened.name);
+        if (announced > 0) lines.push(t.announced(announced));
         await interaction.editReply({ content: lines.join("\n") });
         return;
       }
@@ -76,6 +83,31 @@ export const temporada: Command = {
     }
   },
 };
+
+/**
+ * Anuncio público de la era nueva en los canales de avisos del servidor y de los
+ * logros (sin repetir canal): el GIF suelto (se ve más grande que dentro de un
+ * embed) con el titular, y después el resumen de la era que termina.
+ */
+async function announceEra(client: Client<true>, ctx: CommandContext, closed: Season | null, opened: string): Promise<number> {
+  const routes = alertChannelFor(ctx.config);
+  const ids = new Set([routes.get("server"), routes.get("advancement")].filter((id): id is string => id !== undefined));
+  const summary = closed ? baseEmbed().setTitle(t.summaryTitle(safeText(closed.name, 40))).setDescription(await historyBlock(closed, ctx)) : null;
+  let sent = 0;
+  for (const id of ids) {
+    const channel = await fetchSendableChannel(client, id, "anuncio de era");
+    if (!channel) continue;
+    try {
+      const image = asset("era.gif");
+      await channel.send({ content: t.announce(safeText(opened, 40)), files: image ? [image.file] : [], allowedMentions: { parse: [] } });
+      if (summary) await channel.send({ embeds: [summary], allowedMentions: { parse: [] } });
+      sent++;
+    } catch (error) {
+      log.warn(`No se pudo anunciar la era en ${id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return sent;
+}
 
 async function historyBlock(
   season: { name: string; startedAt: string; endedAt: string | null; finalRanking: string | null },

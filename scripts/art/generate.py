@@ -39,6 +39,9 @@ PALETTE_HEX = {
     "fog0": "#2e2838", "fog1": "#4a4058", "fog2": "#6b5f7d",
     "gem0": "#2a0b27", "gem1": "#5a1a4a", "gem2": "#8f2a78", "gem3": "#c94bb0", "gem4": "#ffb3f0",
     "aur0": "#2a0c18", "aur1": "#4d1424", "aur2": "#7a1f30", "aur3": "#a8323c",
+    # Plata (monedas) y verde de tierra nueva (cambio de era).
+    "silver0": "#3b3a45", "silver1": "#5f5e6d", "silver2": "#8e8c9c", "silver3": "#bdbbc9", "silver4": "#e6e4ef",
+    "land0": "#1a2416", "land1": "#2c3b22", "land2": "#46592f",
 }
 NAMES = list(PALETTE_HEX)
 C = {name: i for i, name in enumerate(NAMES)}
@@ -108,6 +111,7 @@ class Px:
 GLYPHS = {
     "A": [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
     "B": ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+    "C": [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
     "D": ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
     "E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
     "F": ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
@@ -119,6 +123,7 @@ GLYPHS = {
     "O": [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
     "R": ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
     "S": [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+    "T": ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
     "U": ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
     "V": ["#...#", "#...#", "#...#", "#...#", ".#.#.", ".#.#.", "..#.."],
     ",": [".....", ".....", ".....", ".....", ".....", ".##..", ".#..."],
@@ -533,6 +538,157 @@ def rules_banner() -> Image.Image:
     return c.export()
 
 
+def coin(c: Px, cx: float, cy: float, r: float, angle: float) -> None:
+    """Moneda de plata girando sobre su eje vertical: ᚠ (fehu, «riqueza») por delante, ᚱ por detrás."""
+    ca, sa = math.cos(angle), math.sin(angle)
+    w = max(0.8, r * abs(ca))
+    edge = r * 0.22 * abs(sa)  # canto visible al girar
+    shift = edge if sa > 0 else -edge
+    for y in range(int(cy - r - 1), int(cy + r + 2)):
+        for x in range(int(cx - r - edge - 2), int(cx + r + edge + 3)):
+            dy = (y - cy) / r
+            # Canto: la misma elipse desplazada, más oscura y con estrías.
+            if ((x - cx - shift) / w) ** 2 + dy * dy <= 1:
+                c.p(x, y, "silver0" if y % 2 else "silver1")
+    for y in range(int(cy - r - 1), int(cy + r + 2)):
+        for x in range(int(cx - w - 1), int(cx + w + 2)):
+            dx, dy = (x - cx) / w, (y - cy) / r
+            d = dx * dx + dy * dy
+            if d > 1:
+                continue
+            light = -(dx * 0.5 + dy * 0.8)
+            col = "silver1" if light < -0.5 else "silver2" if light < 0.15 else "silver3" if light < 0.6 else "silver4"
+            if d > 0.78:  # reborde
+                col = "silver1" if light < 0 else "silver3"
+            if d > 0.93:
+                col = "black"
+            c.p(x, y, col)
+    # Runa grabada (se estrecha con el giro).
+    if abs(ca) > 0.35:
+        glyph = RUNES["fehu" if ca > 0 else "raido"]
+        k = 2  # cada píxel de la runa, 2×2 (en horizontal se estrecha con el giro)
+        cols = max(1, round(k * abs(ca)))
+        for j, row in enumerate(glyph):
+            for i, ch in enumerate(row):
+                if ch != "#":
+                    continue
+                col_i = i if ca > 0 else 4 - i  # por detrás se ve al revés
+                gx = round(cx + (col_i - 2.5) * k * abs(ca))
+                gy = round(cy + (j - 3.5) * k)
+                for sy in range(k):
+                    for sx in range(cols):
+                        c.p(gx + sx + 1, gy + sy + 1, "silver4")
+                for sy in range(k):
+                    for sx in range(cols):
+                        c.p(gx + sx, gy + sy, "silver0")
+    # Destello que recorre la cara.
+    if ca > 0.6:
+        c.p(cx - w * 0.45, cy - r * 0.45, "white")
+        c.p(cx - w * 0.45 + 1, cy - r * 0.45, "silver4")
+
+
+def treasure(c: Px, f: int) -> None:
+    ph = f / FRAMES * math.tau
+    floor = 60
+    sky(c, floor, warm=0.8)
+    aurora(c, f, top=16, strength=0.8)
+    stars(c, floor, f, seed=61, count=45)
+    # Suelo de piedra del salón.
+    rnd = random.Random(3)
+    for y in range(floor, H):
+        for x in range(W):
+            n = rnd.random()
+            c.p(x, y, "stone0" if n < 0.55 else "stone1" if n < 0.9 else "stone2")
+    for x in range(W):
+        c.p(x, floor, "stone2")
+    cx = W / 2
+    # Resplandor del cofre.
+    for y in range(18, floor):
+        t = 1 - (floor - y) / (floor - 18)
+        half = 12 + (floor - y) * 0.55
+        for x in range(int(cx - half), int(cx + half)):
+            if t * 0.7 > BAYER4[y % 4][x % 4] / 16 + abs(x - cx) / half * 0.5:
+                c.p(x, y, "sky5" if t < 0.6 else "emberDark")
+    # Montones de monedas a los lados: filas de monedas de canto, cada vez más estrechas.
+    for side in (-1, 1):
+        mx0 = cx + side * 36
+        for row in range(5):
+            half = 13 - row * 2.5
+            y = floor - 1 - row * 2
+            for k in range(int(-half), int(half) + 1, 3):
+                x = mx0 + k + (row % 2) * 1.5
+                c.rect(x - 1, y - 1, x + 1, y, "silver1")
+                c.p(x - 1, y - 1, "silver3")
+                c.p(x, y - 1, "silver4" if (k + row) % 4 == 0 else "silver2")
+                c.p(x - 1, y, "silver0")
+    # Cofre abierto: tapa, caja, flejes dorados y monedas dentro.
+    x0, x1, top, bottom = cx - 20, cx + 20, 44, floor + 1
+    c.poly([(x0 + 2, top - 1), (x1 - 2, top - 1), (x1 - 5, top - 12), (x0 + 5, top - 12)], "wood0")
+    c.line([(x0 + 5, top - 12), (x1 - 5, top - 12)], "gold")
+    c.line([(cx, top - 12), (cx, top - 1)], "amber")
+    for y in range(top, bottom):
+        for x in range(int(x0), int(x1) + 1):
+            col = "wood2" if (y - top) % 4 == 1 else "wood1"
+            if x in (int(x0), int(x1)) or y == bottom - 1:
+                col = "black"
+            c.p(x, y, col)
+    for bx in (x0 + 6, x1 - 6):
+        c.rect(bx, top, bx + 1, bottom - 2, "gold")
+    c.rect(x0 + 1, top + 5, x1 - 1, top + 5, "amber")
+    c.rect(cx - 2, top + 3, cx + 2, top + 7, "gold")
+    c.p(cx, top + 5, "black")
+    for k in range(18):  # monedas que asoman
+        c.disc(x0 + 4 + k * 2, top - 1 - (k % 3 == 0), 1.5, "silver2" if k % 2 else "silver3")
+    # Moneda que gira y flota.
+    coin(c, cx, 26 + 2 * math.sin(ph), 11, ph)
+    # Destellos.
+    for k in range(6):
+        a = ph * 0.5 + k * math.tau / 6
+        sx, sy = cx + 30 * math.cos(a), 30 + 10 * math.sin(a)
+        if (f + k) % 4 < 2:
+            c.p(sx, sy, "white")
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                c.p(sx + dx, sy + dy, "silver3")
+    embers(c, f, seed=29, count=10)
+    title(c, "EL TESORO DEL REINO", 3)
+
+
+ERA_W, ERA_H = 240, 60
+
+
+def new_era(c: Px, f: int) -> None:
+    """El drakkar deja atrás el mundo viejo en llamas y va hacia el amanecer de uno nuevo."""
+    ph = f / FRAMES * math.tau
+    horizon = 44
+    sky(c, horizon, warm=1.2)
+    stars(c, horizon, f, seed=71, count=40)
+    aurora(c, f, top=12, strength=0.5)
+    # Amanecer a la derecha.
+    moon(c, 205, horizon + 3, 15)
+    mountains(c, horizon, seed=31, color="land0", height=11, rough=1.6, xs=(150, 240))
+    mountains(c, horizon, seed=32, color="land1", height=6, rough=1.2, xs=(175, 240))
+    for x in range(180, 240):  # luz sobre la tierra nueva
+        for y in range(horizon - 6, horizon):
+            if c.get(x, y) == "land1" and (x + y + f) % 5 == 0:
+                c.p(x, y, "land2")
+    # Mundo viejo ardiendo a la izquierda.
+    mountains(c, horizon, seed=33, color="mtnFar", height=16, rough=2.4, xs=(0, 95))
+    rnd = random.Random(5)
+    for k in range(40):
+        fx = rnd.uniform(4, 90)
+        base = horizon - rnd.uniform(0, 9)
+        height = 3 + 3 * abs(math.sin(ph * 2 + k))
+        for j in range(int(height)):
+            col = "brasa" if j < 1 else "amber" if j < 3 else "orange" if j < 4 else "gold"
+            c.p(fx + math.sin(ph + k + j) * 0.8, base - j, col)
+    sea(c, horizon, f, 205, 16)
+    drakkar(c, 98, 49 + round(math.sin(ph) * 0.8), f, s=0.6)
+    raven(c, 150 + 12 * math.cos(ph), 20 + 4 * math.sin(ph), f)
+    raven(c, 124 + 10 * math.cos(ph + 2), 14 + 3 * math.sin(ph + 2), f + 2)
+    embers(c, f, seed=41, count=18)
+    title(c, "NACE UNA NUEVA ERA", 3)
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -549,6 +705,10 @@ def main() -> None:
     save_gif("bienvenida.gif", welcome_frames, 100)
     save_gif("despedida.gif", farewell_frames, 120)
     save_gif("ofrenda.gif", offering_frames, 90)
+    treasure_frames = frames(treasure)
+    era_frames = frames(new_era, ERA_W, ERA_H)
+    save_gif("tesoro.gif", treasure_frames, 80)
+    save_gif("era.gif", era_frames, 110)
     banner = rules_banner()
     banner.save(OUT / "runas.png", optimize=True)
     print(f"runas.png: {(OUT / 'runas.png').stat().st_size // 1024} KiB, {banner.width}x{banner.height}")
@@ -556,7 +716,13 @@ def main() -> None:
     preview = os.environ.get("ART_PREVIEW_DIR")
     if preview:  # primer fotograma de cada GIF, para revisarlos rápido
         Path(preview).mkdir(parents=True, exist_ok=True)
-        for name, imgs in (("bienvenida", welcome_frames), ("despedida", farewell_frames), ("ofrenda", offering_frames)):
+        for name, imgs in (
+            ("bienvenida", welcome_frames),
+            ("despedida", farewell_frames),
+            ("ofrenda", offering_frames),
+            ("tesoro", treasure_frames),
+            ("era", era_frames),
+        ):
             imgs[0].convert("RGB").save(Path(preview) / f"{name}.png")
             imgs[FRAMES // 2].convert("RGB").save(Path(preview) / f"{name}-mitad.png")
 

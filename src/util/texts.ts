@@ -147,6 +147,10 @@ export const texts = {
     sameWorld: (level: string) =>
       `-# Ojo: el servidor sigue con el mismo mundo (\`${level}\`); los primeros del reino se vuelven a contar desde cero.`,
     unavailable: "Las crónicas de las eras no están disponibles (sin base de datos).",
+    // Anuncio público al abrir una era (en los canales de avisos).
+    announce: (name: string) => `# 🔥 Nace ${name}\nEl viejo reino arde a popa; el drakkar pone rumbo a tierras nuevas. Que los skaldas empiecen otra saga.`,
+    summaryTitle: (name: string) => `📜 Así terminó ${name}`,
+    announced: (n: number) => `-# Anunciado en ${n} ${n === 1 ? "canal" : "canales"}.`,
     // Aviso en el canal de administración.
     mismatchAlert: (level: string, season: string, old: string) =>
       `🌍 **Mundo nuevo detectado.** El servidor carga \`${level}\` y la era abierta es **${season}** (\`${old}\`).\n` +

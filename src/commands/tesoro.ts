@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { EARN_CATEGORIES, EARN_RULES } from "../core/economy.js";
+import { asset } from "../util/assets.js";
 import { baseEmbed } from "../util/embeds.js";
 import { isValidPlayerName, safeText } from "../util/escape.js";
 import { formatCount } from "../util/format.js";
@@ -58,6 +59,9 @@ export const tesoro: Command = {
       t.line(texts.gestas.medals[i] ?? `${i + 1}.`, safeText(resolved.get(e.uuid) ?? texts.unknownWarrior(e.uuid), 32), formatCount(e.balance)),
     );
     const description = lines.length > 0 ? [...lines, "", t.note].join("\n") : t.empty;
-    await interaction.editReply({ embeds: [baseEmbed().setTitle(t.title).setDescription(description)] });
+    const embed = baseEmbed().setTitle(t.title).setDescription(description);
+    const image = asset("tesoro.gif");
+    if (image) embed.setImage(image.url);
+    await interaction.editReply({ embeds: [embed], files: image ? [image.file] : [] });
   },
 };
