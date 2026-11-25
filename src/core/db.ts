@@ -89,6 +89,23 @@ export const MIGRATIONS: readonly string[] = [
   -- Quien ya tenía línea base: su origen es esa línea (lo ganado desde entonces es poco).
   INSERT INTO stat_origins (season_id, uuid, metric, value) SELECT season_id, uuid, metric, value FROM stat_baselines;
   `,
+  // 4: recordatorios (personales, de canal y avisos previos de quedadas).
+  `
+  CREATE TABLE reminders (
+    id         INTEGER PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    guild_id   TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    user_id    TEXT NOT NULL,
+    text       TEXT NOT NULL,
+    due_at     TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    event_id   TEXT,
+    sent_at    TEXT,
+    error      TEXT
+  );
+  CREATE INDEX reminders_pending ON reminders (sent_at, due_at);
+  `,
 ];
 
 export class Database {

@@ -689,6 +689,135 @@ def new_era(c: Px, f: int) -> None:
     title(c, "NACE UNA NUEVA ERA", 3)
 
 
+HORN_W, HORN_H = 200, 80
+
+HORNBLOWER = [  # guerrero de perfil (mirando a la derecha) tocando el cuerno
+    "....##......",
+    "...####.....",
+    "..######....",
+    "..#####.....",
+    "...###......",
+    "..#####.....",
+    ".#######....",
+    "##.#####....",
+    "#..#####....",
+    "...#####....",
+    "...##.##....",
+    "...##.##....",
+    "..###.###...",
+]
+
+
+def horn_call(c: Px, f: int) -> None:
+    """Un guerrero en lo alto de un risco hace sonar el cuerno; las ondas recorren el valle."""
+    ph = f / FRAMES * math.tau
+    horizon = 62
+    sky(c, horizon, warm=1.1)
+    aurora(c, f, top=14, strength=0.9)
+    stars(c, horizon, f, seed=81, count=50)
+    moon(c, 160, 30, 13)
+    mountains(c, horizon, seed=41, color="mtnFar", height=18, rough=2.2, xs=(60, 200), snow=True)
+    mountains(c, horizon, seed=42, color="mtnMid", height=10, rough=2.0, xs=(90, 200))
+    c.rect(0, horizon, c.w, c.h, "mtnNear")
+    # Risco a la izquierda.
+    for x in range(0, 62):
+        top = 44 + (x / 62) ** 2 * 22 + math.sin(x * 0.7) * 1.2
+        for y in range(int(top), c.h):
+            c.p(x, y, "mtnNear" if y > top + 1 else "stone1")
+    # Guerrero (a doble tamaño) y cuerno curvo con boquilla dorada.
+    k2 = 2
+    gx, gy = 26, 45 - len(HORNBLOWER) * k2
+    for j, row in enumerate(HORNBLOWER):
+        for i, ch in enumerate(row):
+            if ch == "#":
+                c.rect(gx + i * k2, gy + j * k2, gx + i * k2 + k2 - 1, gy + j * k2 + k2 - 1, "black")
+    # Capa que ondea.
+    for j in range(8):
+        sway = round(math.sin(ph * 2 + j * 0.5))
+        c.p(gx + 1 + sway - j * 0.3, gy + 12 + j * 1.5, "sailDark")
+        c.p(gx + 2 + sway - j * 0.3, gy + 12 + j * 1.5, "brasa")
+    horn = [(gx + 14 + k * 1.6, gy + 6 - k * 0.9 + (k / 8) ** 2 * 3) for k in range(10)]
+    for k, (hx, hy) in enumerate(horn):
+        c.disc(hx, hy, 0.8 + k * 0.28, "black")
+    for k, (hx, hy) in enumerate(horn):
+        c.disc(hx, hy, 0.4 + k * 0.22, "gold" if k in (0, 4, 8) else "wood2")
+    c.p(horn[-1][0] + 2, horn[-1][1], "light")
+    # Ondas del cuerno que se alejan (arcos que crecen y se apagan).
+    ox, oy = horn[-1]
+    for wave in range(3):
+        t = ((f / FRAMES) + wave / 3) % 1
+        r = 6 + t * 70
+        col = "gold" if t < 0.3 else "orange" if t < 0.6 else "brasa"
+        for a in range(-50, 51, 2):
+            ang = math.radians(a)
+            if (a // 2 + wave) % 3 == 0:
+                continue
+            c.p(ox + r * math.cos(ang), oy - r * math.sin(ang) * 0.7, col)
+    raven(c, 120 + 10 * math.cos(ph), 24 + 3 * math.sin(ph), f)
+    raven(c, 96 + 8 * math.cos(ph + 2), 16 + 3 * math.sin(ph + 2), f + 3)
+    embers(c, f, seed=19, count=14)
+    title(c, "SUENA EL CUERNO", 3)
+
+
+CLOCK = 64
+
+
+def hourglass(c: Px, f: int) -> None:
+    """Reloj de arena con marco tallado: la arena cae y el de abajo se llena."""
+    t = f / FRAMES
+    cx = CLOCK / 2
+    # Fondo: halo cálido y anillo de runas.
+    for y in range(CLOCK):
+        for x in range(CLOCK):
+            d = math.hypot(x - cx, y - cx)
+            if d < 30:
+                c.p(x, y, c.dither(x, y, "sky4", "sky1", d / 30))
+    for k in range(6):
+        a = k / 6 * math.tau + math.pi / 6
+        glyph = RUNES[RUNE_ORDER[k]]
+        lit = (k + f // 3) % 6 == 0
+        c.sprite(int(cx + 26 * math.cos(a)) - 2, int(cx + 26 * math.sin(a)) - 3, glyph, {"#": "gold" if lit else "emberDark"})
+    top, bottom, half_w = 12, 52, 12
+    # Cristal: dos conos unidos por el cuello.
+    def width_at(y: int) -> float:
+        mid = (top + bottom) / 2
+        return 1.2 + (half_w - 1.2) * (abs(y - mid) / ((bottom - top) / 2)) ** 1.4
+
+    sand_top_level = top + 3 + t * 15  # la arena de arriba baja
+    sand_bottom_level = bottom - 3 - t * 14  # la de abajo sube (en montón)
+    for y in range(top + 2, bottom - 1):
+        w = width_at(y)
+        for x in range(int(cx - w), int(cx + w) + 1):
+            edge = x in (int(cx - w), int(cx + w))
+            col = "fog1" if edge else "sky2"
+            upper = y < (top + bottom) / 2
+            if upper and y >= sand_top_level:
+                col = "gold" if (x + y) % 3 else "orange"
+            if not upper:
+                heap = sand_bottom_level + abs(x - cx) * 0.6
+                if y >= heap:
+                    col = "gold" if (x + y) % 3 else "amber"
+            if edge:
+                col = "fog2" if x < cx else "fog1"
+            c.p(x, y, col)
+    # Hilo de arena que cae (con granos que bajan).
+    mid = (top + bottom) // 2
+    for y in range(mid, int(sand_bottom_level)):
+        if (y + f) % 2 == 0:
+            c.p(cx, y, "light")
+    # Brillo del cristal.
+    for y in range(top + 4, mid - 4):
+        c.p(cx - width_at(y) + 2, y, "fog2")
+    # Marco de madera con tapas y columnas.
+    for y0 in (top - 1, bottom - 2):
+        c.rect(cx - half_w - 4, y0, cx + half_w + 4, y0 + 2, "wood1")
+        c.rect(cx - half_w - 4, y0, cx + half_w + 4, y0, "wood2")
+        c.p(cx - half_w - 4, y0 + 2, "black")
+    for px in (cx - half_w - 3, cx + half_w + 3):
+        c.rect(px - 1, top + 2, px, bottom - 3, "wood0")
+        c.p(px - 1, mid, "gold")
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -709,6 +838,13 @@ def main() -> None:
     era_frames = frames(new_era, ERA_W, ERA_H)
     save_gif("tesoro.gif", treasure_frames, 80)
     save_gif("era.gif", era_frames, 110)
+    horn_frames = frames(horn_call, HORN_W, HORN_H)
+    save_gif("quedada.gif", horn_frames, 90)
+    # Portada del evento de Discord (estática, 800×320).
+    horn_frames[2].convert("RGB").save(OUT / "quedada.png", optimize=True)
+    print(f"quedada.png: {(OUT / 'quedada.png').stat().st_size // 1024} KiB, {horn_frames[2].width}x{horn_frames[2].height}")
+    clock_frames = frames(hourglass, CLOCK, CLOCK)
+    save_gif("reloj.gif", clock_frames, 120)
     banner = rules_banner()
     banner.save(OUT / "runas.png", optimize=True)
     print(f"runas.png: {(OUT / 'runas.png').stat().st_size // 1024} KiB, {banner.width}x{banner.height}")
@@ -722,6 +858,8 @@ def main() -> None:
             ("ofrenda", offering_frames),
             ("tesoro", treasure_frames),
             ("era", era_frames),
+            ("quedada", horn_frames),
+            ("reloj", clock_frames),
         ):
             imgs[0].convert("RGB").save(Path(preview) / f"{name}.png")
             imgs[FRAMES // 2].convert("RGB").save(Path(preview) / f"{name}-mitad.png")

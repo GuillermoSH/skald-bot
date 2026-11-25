@@ -15,6 +15,7 @@ import { FirstsLedger } from "./core/firsts.js";
 import { migrateLegacyState } from "./core/legacy-state.js";
 import { rank, type MetricId } from "./core/metrics.js";
 import { MilestoneTracker, type CrossedMilestone } from "./core/milestones.js";
+import { Reminders } from "./core/reminders.js";
 import { Seasons, type Season } from "./core/seasons.js";
 import { WorldStats, type PlayerRecord } from "./core/stats.js";
 import { readLevelName } from "./core/world.js";
@@ -67,6 +68,15 @@ export class Realm {
 
   get seasons(): Seasons | null {
     return this.seasonsRepo;
+  }
+
+  private remindersRepo: Reminders | null = null;
+
+  /** Recordatorios (no dependen de la temporada); null sin base de datos. */
+  get reminders(): Reminders | null {
+    if (!this.db) return null;
+    this.remindersRepo ??= new Reminders(this.db);
+    return this.remindersRepo;
   }
 
   /** Para consultar saldos (también en pausa); null si la economía está apagada. */

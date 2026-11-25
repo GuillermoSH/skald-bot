@@ -18,6 +18,9 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/hel [guerrero]` | Qué mata más en el reino (o a un guerrero): causas de muerte de todos los logs, Valhalla contra Hel |
 | `/tesoro [guerrero]` | Monedas de plata: los cofres más llenos, o el de un guerrero con lo ganado hoy (si la economía está activada) |
 | `/temporada actual \| historial \| nueva` | Las eras del reino (una por mundo): la actual, las pasadas con sus campeones y, solo para administradores, abrir una nueva |
+| `/quedada <titulo> <cuando> [horas] [detalles]` | Crea un evento de Discord («Minecraft · era actual»), lo anuncia en el canal y avisa a los interesados 30 min antes |
+| `/encuesta <pregunta> <opcion1> <opcion2> … [horas] [varias]` | Encuesta nativa de Discord (hasta 8 opciones); al cerrar, Discord publica el resultado |
+| `/recordatorio nuevo \| lista \| borrar` | Recordatorios por privado o en el canal («30m», «2h», «mañana 18:00», «24/12 21:30») |
 | `/saga` | Las últimas muertes y logros del reino |
 | `/memoria` | Estado de las copias de seguridad: última copia, tamaño e historial |
 | `/runas` | Versión, cargador y datos técnicos del servidor |
@@ -89,6 +92,16 @@ Con `ECONOMY_ENABLED=true`, los jugadores ganan **monedas de plata** jugando. Sk
 - Las monedas son de la persona (su UUID de Minecraft) y se conservan entre temporadas. Todo movimiento queda en un libro que solo crece.
 - «El día» de los topes va por `TIMEZONE`.
 - **Regalo inicial** por lo jugado antes de activar la economía: `/regalo vista` (solo administradores, solo lo ve quien lo usa) enseña lo que tocaría a cada uno sin pagar nada, y `/regalo aplicar` lo reparte una sola vez. Tasa más baja que la normal (1 moneda cada 30 min, 10 enemigos, 100 bloques o 2 km) y tope de 500, porque ese tiempo incluye AFK. Quien aparezca después lo recibe al llegar.
+
+### Quedadas, encuestas y recordatorios
+
+Para organizar el reino desde cualquier canal (las respuestas solo las ve quien usa el comando; lo público se publica aparte):
+
+- `/quedada` crea un **evento programado de Discord** con portada propia y lo anuncia en el canal con su tarjeta (botón «Interesado»). 30 minutos antes, Skald avisa en ese canal mencionando a quienes marcaron «Interesado». Necesita el permiso «Crear eventos» (o «Gestionar eventos»).
+- `/encuesta` usa las encuestas nativas de Discord; necesita «Crear encuestas» en el canal.
+- `/recordatorio` guarda los recordatorios en la base de datos: sobreviven a los reinicios (lo que venció con Skald apagado llega con una nota de retraso). Por privado; si los tiene cerrados, en el canal donde se pidió, mencionando solo a esa persona. Máximo 25 pendientes por persona y un año de antelación.
+
+Las fechas se escriben a mano en la zona horaria de `TIMEZONE`.
 
 ### Comandos solo en ciertos canales
 

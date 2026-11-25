@@ -28,6 +28,7 @@ import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
 import { Herald, heraldNeedsMembers } from "./herald.js";
 import { Realm } from "./realm.js";
+import { startReminderWatch } from "./reminder-watch.js";
 import { publishRules } from "./rules.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { baseEmbed, COLORS } from "./util/embeds.js";
@@ -136,6 +137,7 @@ function main(): void {
     }
   };
   let realmTimer: NodeJS.Timeout | null = null;
+  let stopReminders: () => void = () => {};
 
   const needsMembers = heraldNeedsMembers(config);
   const client = new Client({
@@ -209,6 +211,9 @@ function main(): void {
     // La primera vez, lo ya superado se apunta en silencio (hitos y monedas).
     await realmTick();
     realmTimer = setInterval(() => void realmTick(), REALM_TICK_MS);
+    // Recordatorios y avisos de quedadas (necesitan la base de datos).
+    const reminders = realm.reminders;
+    if (reminders) stopReminders = startReminderWatch(ready, reminders);
     try {
       await watcher.start();
       log.info("Siguiendo el log del servidor");
@@ -230,6 +235,7 @@ function main(): void {
     watcher.stop();
     backupWatcher?.stop();
     if (realmTimer) clearInterval(realmTimer);
+    stopReminders();
     alerts?.dispose();
     realm.close();
     void client.destroy().finally(() => process.exit(0));

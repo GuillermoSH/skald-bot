@@ -9,6 +9,9 @@ import { memoria } from "./memoria.js";
 import { reino } from "./reino.js";
 import { runas } from "./runas.js";
 import { regalo } from "./regalo.js";
+import { encuesta } from "./encuesta.js";
+import { quedada } from "./quedada.js";
+import { recordatorio } from "./recordatorio.js";
 import { saga } from "./saga.js";
 import { temporada } from "./temporada.js";
 import { tesoro } from "./tesoro.js";
@@ -23,6 +26,9 @@ export const commands: readonly Command[] = [
   hel,
   saga,
   tesoro,
+  quedada,
+  encuesta,
+  recordatorio,
   temporada,
   regalo,
   memoria,

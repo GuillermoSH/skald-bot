@@ -17,4 +17,13 @@ describe("eras", () => {
     const regalo = commands.find((c) => c.data.name === "regalo")?.data.toJSON();
     expect(regalo?.default_member_permissions).toBe("8");
   });
+
+  it("todos los comandos cumplen los límites de Discord", () => {
+    for (const c of commands) {
+      const json = c.data.toJSON();
+      expect(json.name).toMatch(/^[a-z_]{1,32}$/);
+      expect(json.description.length).toBeLessThanOrEqual(100);
+      expect(json.options?.length ?? 0).toBeLessThanOrEqual(25);
+    }
+  });
 });

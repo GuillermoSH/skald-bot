@@ -34,6 +34,12 @@ export function asset(name: string, options: { versioned?: boolean } = {}): Asse
   return { file: new AttachmentBuilder(file, { name: attachmentName }), url: `attachment://${attachmentName}` };
 }
 
+/** Ruta en disco de una imagen de assets/ (para APIs que piden un fichero), o null si no está. */
+export function assetPath(name: string): string | null {
+  const file = path.join(ASSETS_DIR, name);
+  return existsSync(file) ? file : null;
+}
+
 /** Nombre del fichero de una URL de imagen (attachment://x.png o la del CDN de Discord). */
 export function imageFileName(url: string | undefined): string | null {
   if (!url) return null;
