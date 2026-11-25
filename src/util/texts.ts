@@ -3,6 +3,7 @@
  * Para cambiar el tono basta con tocar este fichero.
  */
 import type { AdvancementKind } from "../core/logwatch.js";
+import type { BackupStatus } from "../core/backups.js";
 import type { EarnCategory } from "../core/economy.js";
 import type { MetricId } from "../core/metrics.js";
 import type { MilestoneId } from "../core/milestones.js";
@@ -211,6 +212,28 @@ export const texts = {
     applied: (players: number, coins: string) => `🎁 Regalo repartido: 🪙 ${coins} entre ${players} guerreros. Quien aparezca más tarde lo recibirá al llegar.`,
     alreadyApplied: "El regalo de esta era ya se repartió.",
     onlyJarl: "Solo el Jarl puede tocar el tesoro del reino.",
+  },
+
+  // Panel del reino (mensaje fijo que se edita solo). Se reconoce por el pie: no cambiarlo.
+  panel: {
+    footer: "Skald · estado del reino · se actualiza solo",
+    title: "📊 Estado del reino",
+    awake: "🔥 **El reino está despierto.**",
+    empty: "🌙 **Silencio en las salas.** El servidor está en marcha, pero no hay nadie.",
+    lagging: "⚠️ **El reino se tambalea.** La forja no da abasto.",
+    asleep: "💤 **El reino duerme.** El servidor no responde.",
+    warriors: (online: number, max: number) => `⚔️ Guerreros (${online}/${max})`,
+    nobody: "Nadie",
+    tps: "⏱️ TPS",
+    mspt: "⚙️ Tiempo por tick",
+    noTicks: "Sin datos",
+    version: "🏷️ Versión",
+    era: "🌍 Era",
+    eraPending: (level: string) => `\n⏸️ Mundo nuevo (\`${level}\`) a la espera de era`,
+    backup: "💾 Última copia",
+    backupNone: "Ninguna",
+    backupWarn: { ok: "", none: "", stale: " ⚠️ antigua", small: " ⚠️ pequeña" } satisfies Record<BackupStatus, string>,
+    changed: "Último cambio",
   },
 
   // /encuesta (encuestas nativas de Discord)

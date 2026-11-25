@@ -93,6 +93,10 @@ Con `ECONOMY_ENABLED=true`, los jugadores ganan **monedas de plata** jugando. Sk
 - «El día» de los topes va por `TIMEZONE`.
 - **Regalo inicial** por lo jugado antes de activar la economía: `/regalo vista` (solo administradores, solo lo ve quien lo usa) enseña lo que tocaría a cada uno sin pagar nada, y `/regalo aplicar` lo reparte una sola vez. Tasa más baja que la normal (1 moneda cada 30 min, 10 enemigos, 100 bloques o 2 km) y tope de 500, porque ese tiempo incluye AFK. Quien aparezca después lo recibe al llegar.
 
+### Panel del reino
+
+Con `PANEL_CHANNEL_ID`, Skald mantiene en ese canal **un único mensaje** con el estado del reino: guerreros conectados, TPS y tiempo por tick, versión, era actual y última copia de seguridad, con una portada en pixel art que cambia según el estado (despierto, vacío, con lag o caído). Lo revisa cada minuto y solo lo edita si algo ha cambiado; lo reconoce por el pie, así que tras un reinicio sigue editando el mismo. Necesita *Ver canal*, *Enviar mensajes*, *Insertar enlaces*, *Adjuntar archivos* y *Leer el historial de mensajes*; conviene que nadie más pueda escribir en ese canal.
+
 ### Quedadas, encuestas y recordatorios
 
 Para organizar el reino desde cualquier canal (las respuestas solo las ve quien usa el comando; lo público se publica aparte):
@@ -166,6 +170,7 @@ Rellena `.env`:
 | `BACKUP_MAX_AGE_HOURS` | No | Horas sin copia nueva antes de avisar (por defecto 26) |
 | `BACKUPS_DIR` | No | Carpeta de copias (por defecto `/backups`, la del contenedor) |
 | `STATE_DIR` | No | Estado propio de Skald, lo único que escribe (por defecto `/state`; nunca dentro de `DATA_DIR`) |
+| `PANEL_CHANNEL_ID` | No | Canal del panel del reino (un mensaje fijo que Skald mantiene al día) |
 | `TIMEZONE` | No | Zona horaria de «el día» para los topes de monedas (por defecto `UTC`, p. ej. `Europe/Madrid`) |
 | `ECONOMY_ENABLED` | No | `true` para activar las monedas (por defecto `false`) |
 | `HERALD_CHANNEL_ID` | No | Canal de bienvenidas, despedidas y boosts |

@@ -818,6 +818,73 @@ def hourglass(c: Px, f: int) -> None:
         c.p(px - 1, mid, "gold")
 
 
+PANEL_W, PANEL_H = 200, 64
+
+
+def panel_banner(state: str) -> Image.Image:
+    """Torre-almenara del reino: el fuego dice cómo está el servidor (ok, empty, lag, down)."""
+    c = Px(PANEL_W, PANEL_H)
+    horizon = 58
+    sky(c, horizon, warm={"ok": 1.3, "empty": 0.6, "lag": 1.8, "down": 0.3}[state])
+    if state != "lag":
+        stars(c, horizon, 3, seed=91, count=45 if state != "ok" else 25)
+    aurora(c, 5, top=12, strength={"ok": 0.7, "empty": 0.4, "lag": 1.4, "down": 0.0}[state])
+    if state in ("empty", "down"):
+        moon(c, 168, 30, 9)
+    mountains(c, horizon, seed=52, color="mtnFar", height=13, rough=2.0, xs=(0, 200), snow=True)
+    c.rect(0, horizon, c.w, c.h, "mtnNear")
+    cx = 100
+    for x in range(56, 145):  # colina
+        top = horizon - 7 * math.cos((x - cx) / 44 * math.pi / 2)
+        for y in range(int(top), c.h):
+            c.p(x, y, "mtnNear")
+    rnd = random.Random(8)
+    tower_top = 34
+    for y in range(tower_top, horizon - 4):
+        half = 6 + (y - tower_top) * 0.12
+        for x in range(int(cx - half), int(cx + half) + 1):
+            n = rnd.random()
+            col = "stone2" if n < 0.6 else "stone1" if n < 0.9 else "stone3"
+            if (y - tower_top) % 4 == 0 and n < 0.7:
+                col = "stone0"
+            if x in (int(cx - half), int(cx + half)):
+                col = "stone0"
+            c.p(x, y, col)
+    for k in range(-6, 7, 3):  # almenas
+        c.rect(cx + k - 1, tower_top - 3, cx + k, tower_top - 1, "stone2")
+    c.rect(cx - 1, 42, cx + 1, 46, "black")  # tronera
+    if state != "down":
+        c.p(cx, 44, "gold" if state == "ok" else "amber" if state == "lag" else "emberDark")
+    # Fuego de la almenara (sobre la torre, por debajo del título).
+    base = tower_top - 3
+    size = {"ok": 13, "empty": 5, "lag": 10, "down": 0}[state]
+    for k in range(-7, 8):
+        h = size * (1 - abs(k) / 8) * (0.75 + 0.45 * abs(math.sin(k * 1.7)))
+        for j in range(int(h)):
+            col = "brasa" if j < 1 else "amber" if j < h * 0.4 else "orange" if j < h * 0.75 else "gold"
+            if state == "lag" and j > h * 0.55:
+                col = "brasa" if (k + j) % 2 else "amber"
+            if state == "ok" and j > h * 0.85:
+                col = "light"
+            c.p(cx + k, base - j, col)
+    if state == "ok":  # resplandor alrededor del fuego
+        for a in range(0, 360, 20):
+            r = 15 + (a % 40) / 10
+            c.p(cx + r * math.cos(math.radians(a)), base - 6 + r * 0.6 * math.sin(math.radians(a)), "gold" if a % 40 else "orange")
+    if state in ("lag", "down"):  # humo
+        for k in range(22):
+            x = cx + 2 + k * 1.1 + math.sin(k * 0.8) * 2
+            y = base - 2 - k * 0.8
+            c.p(x, y, "fog1" if k % 2 else "fog2")
+            c.p(x + 1, y, "fog0")
+    if state == "lag":
+        embers(c, 6, seed=13, count=18)
+    elif state == "ok":
+        embers(c, 2, seed=14, count=10)
+    title(c, "ESTADO DEL REINO", 3)
+    return c.export()
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -828,6 +895,9 @@ def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    preview = os.environ.get("ART_PREVIEW_DIR")
+    if preview:
+        Path(preview).mkdir(parents=True, exist_ok=True)
     welcome_frames = frames(welcome)
     farewell_frames = frames(farewell)
     offering_frames = frames(offering)
@@ -843,13 +913,18 @@ def main() -> None:
     # Portada del evento de Discord (estática, 800×320).
     horn_frames[2].convert("RGB").save(OUT / "quedada.png", optimize=True)
     print(f"quedada.png: {(OUT / 'quedada.png').stat().st_size // 1024} KiB, {horn_frames[2].width}x{horn_frames[2].height}")
+    for state in ("ok", "empty", "lag", "down"):
+        img = panel_banner(state)
+        img.save(OUT / f"panel-{state}.png", optimize=True)
+        print(f"panel-{state}.png: {(OUT / f'panel-{state}.png').stat().st_size // 1024} KiB, {img.width}x{img.height}")
+        if preview:
+            img.convert("RGB").save(Path(preview) / f"panel-{state}.png")
     clock_frames = frames(hourglass, CLOCK, CLOCK)
     save_gif("reloj.gif", clock_frames, 120)
     banner = rules_banner()
     banner.save(OUT / "runas.png", optimize=True)
     print(f"runas.png: {(OUT / 'runas.png').stat().st_size // 1024} KiB, {banner.width}x{banner.height}")
 
-    preview = os.environ.get("ART_PREVIEW_DIR")
     if preview:  # primer fotograma de cada GIF, para revisarlos rápido
         Path(preview).mkdir(parents=True, exist_ok=True)
         for name, imgs in (

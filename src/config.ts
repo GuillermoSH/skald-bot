@@ -52,6 +52,9 @@ export const configSchema = discordSchema.extend({
   COMMAND_CHANNEL_IDS: snowflakeList,
   ADMIN_USER_IDS: snowflakeList,
 
+  // Panel del reino: mensaje fijo que Skald mantiene al día (opcional).
+  PANEL_CHANNEL_ID: snowflake.optional(),
+
   // Canal privado de administración (avisos internos, p. ej. copias de seguridad).
   ADMIN_CHANNEL_ID: snowflake.optional(),
   // Antigüedad máxima de la última copia antes de avisar (la de mc-backup es diaria).

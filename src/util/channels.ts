@@ -6,6 +6,7 @@ const PERMISSION_NAMES = {
   SendMessages: "Enviar mensajes",
   EmbedLinks: "Insertar enlaces",
   ReadMessageHistory: "Leer el historial de mensajes",
+  AttachFiles: "Adjuntar archivos",
 } as const;
 
 export type ChannelPermission = keyof typeof PERMISSION_NAMES;

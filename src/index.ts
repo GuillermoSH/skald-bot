@@ -28,6 +28,7 @@ import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
 import { Herald, heraldNeedsMembers } from "./herald.js";
 import { Realm } from "./realm.js";
+import { startPanel } from "./panel.js";
 import { startReminderWatch } from "./reminder-watch.js";
 import { publishRules } from "./rules.js";
 import { fetchSendableChannel } from "./util/channels.js";
@@ -138,6 +139,7 @@ function main(): void {
   };
   let realmTimer: NodeJS.Timeout | null = null;
   let stopReminders: () => void = () => {};
+  let stopPanel: () => void = () => {};
 
   const needsMembers = heraldNeedsMembers(config);
   const client = new Client({
@@ -214,6 +216,8 @@ function main(): void {
     // Recordatorios y avisos de quedadas (necesitan la base de datos).
     const reminders = realm.reminders;
     if (reminders) stopReminders = startReminderWatch(ready, reminders);
+    // Panel del reino (después de la temporada, para enseñar la era).
+    if (config.PANEL_CHANNEL_ID) stopPanel = await startPanel(ready, ctx, config.PANEL_CHANNEL_ID);
     try {
       await watcher.start();
       log.info("Siguiendo el log del servidor");
@@ -236,6 +240,7 @@ function main(): void {
     backupWatcher?.stop();
     if (realmTimer) clearInterval(realmTimer);
     stopReminders();
+    stopPanel();
     alerts?.dispose();
     realm.close();
     void client.destroy().finally(() => process.exit(0));
