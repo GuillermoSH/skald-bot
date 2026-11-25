@@ -78,6 +78,16 @@ export const configSchema = discordSchema.extend({
   BACKUPS_DIR: z.string().min(1).default("/backups"),
   // Estado propio de Skald (escribible; nunca dentro de DATA_DIR).
   STATE_DIR: z.string().min(1).default("/state"),
+  // Zona horaria para «el día» (topes diarios de monedas...), p. ej. Europe/Madrid.
+  TIMEZONE: z
+    .string()
+    .default("UTC")
+    .refine((tz) => isTimeZone(tz), "zona horaria desconocida (p. ej. Europe/Madrid)"),
+  // Economía: monedas por jugar (apagada por defecto).
+  ECONOMY_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 }).refine((c) => !isInside(c.STATE_DIR, c.DATA_DIR), {
@@ -85,6 +95,15 @@ export const configSchema = discordSchema.extend({
   message: "no puede estar dentro de DATA_DIR",
   path: ["STATE_DIR"],
 });
+
+function isTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function isInside(child: string, parent: string): boolean {
   const rel = path.relative(path.resolve(parent), path.resolve(child));

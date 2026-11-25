@@ -3,6 +3,7 @@
  * Para cambiar el tono basta con tocar este fichero.
  */
 import type { AdvancementKind } from "../core/logwatch.js";
+import type { EarnCategory } from "../core/economy.js";
 import type { MetricId } from "../core/metrics.js";
 import type { MilestoneId } from "../core/milestones.js";
 import type { TickState } from "../core/parsers.js";
@@ -120,6 +121,57 @@ export const texts = {
     totalFor: (name: string, n: string) => `-# ${n} muertes de ${name} en los registros del reino.`,
     empty: "Nadie ha muerto aún en el reino. Hel se impacienta.",
     emptyFor: (name: string) => `${name} no ha muerto nunca… de momento. Hel tiene paciencia.`,
+  },
+
+  // /temporada (una temporada = un mundo; se llaman «eras»)
+  temporada: {
+    firstName: "Era I",
+    actualDescription: "La era actual del reino",
+    historialDescription: "Las eras pasadas y sus campeones",
+    nuevaDescription: "Cierra la era actual y abre otra con el mundo del servidor (solo el Jarl)",
+    nameOption: "nombre",
+    nameOptionDescription: "Nombre de la era nueva (p. ej. «Era II» o «Yule»)",
+    currentTitle: (name: string) => `🌍 ${name}`,
+    world: "🗺️ Mundo",
+    since: "📅 Desde",
+    firsts: "🌟 Primeros del reino",
+    paused: (level: string) =>
+      `⏸️ El servidor carga un mundo nuevo (\`${level}\`). Las crónicas de esta era esperan a que el Jarl abra la siguiente.`,
+    historyTitle: "📜 Las eras del reino",
+    historyLine: (name: string, from: string, to: string | null) => `### ${name}\n${from} → ${to ?? "hoy"}`,
+    champion: (label: string, name: string, value: string) => `${label}: **${name}** (${value})`,
+    noHistory: "Solo existe la era actual. La historia acaba de empezar.",
+    onlyJarl: "Solo el Jarl puede abrir una era nueva.",
+    opened: (closed: string | null, opened: string) =>
+      closed ? `🔥 Termina **${closed}** y comienza **${opened}**.` : `🔥 Comienza **${opened}**.`,
+    sameWorld: (level: string) =>
+      `-# Ojo: el servidor sigue con el mismo mundo (\`${level}\`); los primeros del reino se vuelven a contar desde cero.`,
+    unavailable: "Las crónicas de las eras no están disponibles (sin base de datos).",
+    // Aviso en el canal de administración.
+    mismatchAlert: (level: string, season: string, old: string) =>
+      `🌍 **Mundo nuevo detectado.** El servidor carga \`${level}\` y la era abierta es **${season}** (\`${old}\`).\n` +
+      "Primeros del reino, hitos y monedas quedan en pausa. Cuando esté listo, abre la nueva con `/temporada nueva`.",
+  },
+
+  // /tesoro
+  tesoro: {
+    optionName: "guerrero",
+    optionDescription: "El cofre de este guerrero (si no, los más ricos)",
+    title: "🪙 Los cofres del reino",
+    titleFor: (name: string) => `🪙 El cofre de ${name}`,
+    coins: (n: string) => `**${n}** monedas de plata`,
+    line: (medal: string, name: string, n: string) => `${medal} **${name}** · 🪙 ${n}`,
+    todayHeading: "### Hoy",
+    categories: {
+      play_time: "⏳ Tiempo activo",
+      mob_kills: "⚔️ Enemigos",
+      blocks_mined: "⛏️ Bloques",
+      distance: "🧭 Distancia",
+    } satisfies Record<EarnCategory, string>,
+    today: (label: string, earned: string, cap: string) => `${label} · ${earned} / ${cap}`,
+    empty: "Los cofres del reino siguen vacíos. Las monedas se ganan jugando.",
+    note: "-# Se gana jugando: Skald hace cuentas cada ~5 min. El tiempo quieto (AFK) no cuenta.",
+    disabled: "La economía del reino aún no está abierta.",
   },
 
   // /duelo

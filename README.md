@@ -16,6 +16,8 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
 | `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
 | `/hel [guerrero]` | Qué mata más en el reino (o a un guerrero): causas de muerte de todos los logs, Valhalla contra Hel |
+| `/tesoro [guerrero]` | Monedas de plata: los cofres más llenos, o el de un guerrero con lo ganado hoy (si la economía está activada) |
+| `/temporada actual \| historial \| nueva` | Las eras del reino (una por mundo): la actual, las pasadas con sus campeones y, solo para administradores, abrir una nueva |
 | `/saga` | Las últimas muertes y logros del reino |
 | `/memoria` | Estado de las copias de seguridad: última copia, tamaño e historial |
 | `/runas` | Versión, cargador y datos técnicos del servidor |
@@ -67,13 +69,33 @@ Skald también hace de heraldo, sin bots de terceros:
 
 Necesita el *Server Members Intent* activado en el portal de desarrolladores (pestaña *Bot*). Skald solo lo pide si hay algo del heraldo configurado. Para el rol automático hace falta «Gestionar roles», y que el rol de Skald esté por encima del que va a dar. Para editar las normas, «Leer el historial de mensajes» en ese canal. Conviene desactivar los mensajes del sistema de Discord para que no salgan duplicados.
 
+### Temporadas (eras)
+
+Cada mundo es una **temporada**. Los primeros del reino, los hitos y las monedas ganadas se apuntan con la temporada en la que pasaron, así que un mundo nuevo empieza con todo por estrenar. Skald nunca cambia de temporada solo: si el `level-name` del servidor deja de coincidir con el de la temporada abierta, lo avisa en el canal de administración y deja esas cuentas en pausa hasta que un administrador (`ADMIN_USER_IDS`) use `/temporada nueva`. Al cerrarse, la temporada guarda su ranking final, que se ve en `/temporada historial`.
+
+### Economía
+
+Con `ECONOMY_ENABLED=true`, los jugadores ganan **monedas de plata** jugando. Skald las calcula cada ~5 minutos comparando sus estadísticas con lo ya contado:
+
+| Categoría | Una moneda por | Tope diario |
+|---|---|---|
+| ⏳ Tiempo activo | 10 min | 60 |
+| ⚔️ Enemigos abatidos | 5 | 40 |
+| ⛏️ Bloques picados | 50 | 40 |
+| 🧭 Distancia | 1 km | 30 |
+
+- El tiempo solo cuenta si en el mismo rato hubo otra actividad (contra el AFK).
+- Lo jugado antes de activar la economía no se paga: la primera vez solo se apunta desde dónde se empieza a contar.
+- Las monedas son de la persona (su UUID de Minecraft) y se conservan entre temporadas. Todo movimiento queda en un libro que solo crece.
+- «El día» de los topes va por `TIMEZONE`.
+
 ### Comandos solo en ciertos canales
 
 Con `COMMAND_CHANNEL_IDS`, Skald solo responde a los comandos en esos canales (y en sus hilos). En el resto contesta, solo a quien lo usó, dónde encontrarlo. El canal de administración (`ADMIN_CHANNEL_ID`) siempre está permitido, para pruebas, y los comandos que solo ve quien los usa (como `/ayuda`) funcionan en cualquier canal. Para que ni siquiera aparezcan en otros canales, Discord permite restringirlos en *Ajustes del servidor → Integraciones → Skald*.
 
 ## Diseño y seguridad
 
-- **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura. Lo poco que recuerda (los primeros del reino) lo guarda en `STATE_DIR`, un volumen propio; la configuración rechaza que esté dentro del mundo.
+- **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura. Lo que recuerda (temporadas, primeros del reino, hitos, monedas) lo guarda en una base de datos SQLite (`node:sqlite`, sin dependencias nativas) en `STATE_DIR`, un volumen propio, con una copia diaria en `STATE_DIR/backups` (se guardan 7); la configuración rechaza que esté dentro del mundo. Esa carpeta no la cubren las copias del servidor de Minecraft: conviene incluirla en una copia fuera de la máquina.
 - **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
 - **Sin menciones.** Todas las respuestas se envían con `allowedMentions: { parse: [] }`, y el texto que viene del servidor (MOTD, nombres) se escapa.
 - **Configuración validada al arrancar.** Si falta una variable obligatoria, el bot no arranca, y los errores nunca muestran valores (pueden ser secretos).
@@ -130,6 +152,8 @@ Rellena `.env`:
 | `BACKUP_MAX_AGE_HOURS` | No | Horas sin copia nueva antes de avisar (por defecto 26) |
 | `BACKUPS_DIR` | No | Carpeta de copias (por defecto `/backups`, la del contenedor) |
 | `STATE_DIR` | No | Estado propio de Skald, lo único que escribe (por defecto `/state`; nunca dentro de `DATA_DIR`) |
+| `TIMEZONE` | No | Zona horaria de «el día» para los topes de monedas (por defecto `UTC`, p. ej. `Europe/Madrid`) |
+| `ECONOMY_ENABLED` | No | `true` para activar las monedas (por defecto `false`) |
 | `HERALD_CHANNEL_ID` | No | Canal de bienvenidas, despedidas y boosts |
 | `RULES_CHANNEL_ID` | No | Canal de normas, donde Skald mantiene su mensaje |
 | `AUTO_ROLE_ID` | No | Rol que se da automáticamente al entrar |

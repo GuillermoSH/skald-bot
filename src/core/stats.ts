@@ -114,6 +114,8 @@ export class WorldStats {
   constructor(
     private readonly dataDir: string,
     private readonly ttlMs = 60_000,
+    /** Un mundo concreto (p. ej. el de una temporada que se cierra); si no, el actual. */
+    private readonly levelName?: string,
   ) {}
 
   async players(): Promise<PlayerRecord[]> {
@@ -125,7 +127,7 @@ export class WorldStats {
   }
 
   private async load(): Promise<PlayerRecord[]> {
-    const playersDir = path.join(await resolveWorldDir(this.dataDir), "players");
+    const playersDir = path.join(await resolveWorldDir(this.dataDir, this.levelName), "players");
     const statsDir = path.join(playersDir, "stats");
     let files: string[];
     try {

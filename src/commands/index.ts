@@ -9,6 +9,8 @@ import { memoria } from "./memoria.js";
 import { reino } from "./reino.js";
 import { runas } from "./runas.js";
 import { saga } from "./saga.js";
+import { temporada } from "./temporada.js";
+import { tesoro } from "./tesoro.js";
 import type { Command } from "./types.js";
 
 export const commands: readonly Command[] = [
@@ -19,6 +21,8 @@ export const commands: readonly Command[] = [
   duelo,
   hel,
   saga,
+  tesoro,
+  temporada,
   memoria,
   runas,
   mapa,

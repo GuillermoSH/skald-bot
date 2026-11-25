@@ -10,6 +10,7 @@ import type { Translator } from "../core/lang.js";
 import type { NameResolver } from "../core/names.js";
 import type { RconClient } from "../core/rcon.js";
 import type { WorldStats } from "../core/stats.js";
+import type { Realm } from "../realm.js";
 
 export interface CommandContext {
   config: Config;
@@ -19,6 +20,7 @@ export interface CommandContext {
   lang: Translator;
   chronicle: Chronicle;
   deaths: DeathArchive;
+  realm: Realm;
 }
 
 export interface Command {

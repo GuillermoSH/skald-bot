@@ -2,12 +2,11 @@
  * Hitos personales: cifras redondas de las estadísticas (horas jugadas, km...).
  *
  * `check()` compara las estadísticas de los ficheros del mundo con lo ya apuntado
- * y devuelve los hitos nuevos. La primera vez (y con cada jugador que aparece por
+ * (por temporada) y devuelve los hitos nuevos. La primera vez (y con cada jugador que aparece por
  * primera vez) apunta en silencio lo ya superado, para no anunciar el pasado.
  * Si alguien salta varios de golpe, solo se devuelve el más alto.
  */
-import { z } from "zod";
-import type { JsonStore } from "./state.js";
+import type { Database } from "./db.js";
 import { stat, type PlayerRecord } from "./stats.js";
 import { METRICS } from "./metrics.js";
 
@@ -40,54 +39,52 @@ export function reachedThreshold(milestone: Milestone, value: number): number {
   return best;
 }
 
-export const milestonesSchema = z.object({
-  version: z.literal(1),
-  /** uuid → hito → cifra más alta ya apuntada. */
-  reached: z.record(z.string(), z.record(z.string(), z.number())),
-});
-export type MilestonesState = z.infer<typeof milestonesSchema>;
-export const emptyMilestones = (): MilestonesState => ({ version: 1, reached: {} });
-
 export interface CrossedMilestone {
   uuid: string;
   id: MilestoneId;
   threshold: number;
 }
 
+/** Marca de «jugador ya visto» (aunque no haya superado ninguna cifra). */
+const SEEN = "__seen";
+
 export class MilestoneTracker {
-  private constructor(
-    private readonly state: MilestonesState,
-    private readonly store: JsonStore<MilestonesState> | null,
+  constructor(
+    private readonly db: Database,
+    readonly seasonId: number,
   ) {}
 
-  static async open(store: JsonStore<MilestonesState> | null): Promise<MilestoneTracker> {
-    return new MilestoneTracker(store ? await store.load() : emptyMilestones(), store);
-  }
-
-  async check(players: readonly PlayerRecord[]): Promise<CrossedMilestone[]> {
-    const crossed: CrossedMilestone[] = [];
-    let changed = false;
-    for (const player of players) {
-      const known = this.state.reached[player.uuid];
-      const reached = known ?? {};
-      for (const id of MILESTONE_IDS) {
-        const threshold = reachedThreshold(MILESTONES[id], MILESTONES[id].value(player));
-        if (threshold <= (reached[id] ?? 0)) continue;
-        reached[id] = threshold;
-        changed = true;
+  check(players: readonly PlayerRecord[]): CrossedMilestone[] {
+    return this.db.transaction(() => {
+      const crossed: CrossedMilestone[] = [];
+      for (const player of players) {
+        const rows = this.db.all<{ milestone_id: string; threshold: number }>(
+          "SELECT milestone_id, threshold FROM milestones WHERE season_id = ? AND uuid = ?",
+          this.seasonId,
+          player.uuid,
+        );
+        const reached = new Map(rows.map((r) => [r.milestone_id, r.threshold]));
         // Jugador visto por primera vez: lo que ya tenía no es noticia.
-        if (known) crossed.push({ uuid: player.uuid, id, threshold });
+        const known = reached.has(SEEN);
+        if (!known) this.save(player.uuid, SEEN, 0);
+        for (const id of MILESTONE_IDS) {
+          const threshold = reachedThreshold(MILESTONES[id], MILESTONES[id].value(player));
+          if (threshold <= (reached.get(id) ?? 0)) continue;
+          this.save(player.uuid, id, threshold);
+          if (known) crossed.push({ uuid: player.uuid, id, threshold });
+        }
       }
-      if (!known) {
-        this.state.reached[player.uuid] = reached;
-        changed = true;
-      }
-    }
-    if (changed) await this.store?.save(this.state);
-    return crossed;
+      return crossed;
+    });
   }
 
-  flush(): Promise<void> {
-    return this.store?.flush() ?? Promise.resolve();
+  private save(uuid: string, id: string, threshold: number): void {
+    this.db.run(
+      "INSERT INTO milestones (season_id, uuid, milestone_id, threshold) VALUES (?, ?, ?, ?) ON CONFLICT DO UPDATE SET threshold = excluded.threshold",
+      this.seasonId,
+      uuid,
+      id,
+      threshold,
+    );
   }
 }

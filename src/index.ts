@@ -1,4 +1,3 @@
-import path from "node:path";
 import {
   Client,
   Events,
@@ -17,15 +16,13 @@ import { ConfigError, loadConfig } from "./config.js";
 import { BackupsUnavailableError } from "./core/backups.js";
 import { Chronicle } from "./core/chronicle.js";
 import { DeathArchive } from "./core/deaths.js";
-import { emptyFirsts, FirstsLedger, firstsSchema } from "./core/firsts.js";
-import { emptyMilestones, MilestoneTracker, milestonesSchema } from "./core/milestones.js";
 import { jarEnglishLoader, fetchSpanishLang, Translator } from "./core/lang.js";
 import { LogWatcher } from "./core/logwatch.js";
 import { NameResolver } from "./core/names.js";
 import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
-import { JsonStore } from "./core/state.js";
 import { Herald, heraldNeedsMembers } from "./herald.js";
+import { Realm } from "./realm.js";
 import { publishRules } from "./rules.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { baseEmbed, COLORS } from "./util/embeds.js";
@@ -37,9 +34,8 @@ import { formatCount } from "./util/format.js";
 import { log, setLogLevel } from "./util/log.js";
 import { texts } from "./util/texts.js";
 
-const FIRSTS_RECONCILE_MS = 15 * 60_000;
 // El servidor guarda las estadísticas en cada autoguardado (~5 min).
-const MILESTONES_CHECK_MS = 5 * 60_000;
+const REALM_TICK_MS = 5 * 60_000;
 
 function main(): void {
   let config;
@@ -62,6 +58,17 @@ function main(): void {
     fetchSpanishLang,
     jarEnglishLoader(config.DATA_DIR),
   );
+  const world = new WorldStats(config.DATA_DIR);
+  const realm = new Realm(
+    {
+      dataDir: config.DATA_DIR,
+      stateDir: config.STATE_DIR,
+      timeZone: config.TIMEZONE,
+      economy: config.ECONOMY_ENABLED,
+      firstSeasonName: texts.temporada.firstName,
+    },
+    world,
+  );
   const ctx: CommandContext = {
     config,
     rcon: new RconClient({
@@ -70,17 +77,17 @@ function main(): void {
       password: config.RCON_PASSWORD,
       timeoutMs: config.RCON_TIMEOUT_MS,
     }),
-    world: new WorldStats(config.DATA_DIR),
+    world,
     names: new NameResolver(config.DATA_DIR),
     lang,
     chronicle: new Chronicle(),
     deaths: new DeathArchive(config.DATA_DIR, lang),
+    realm,
   };
 
   let alerts: AlertQueue | null = null;
-  let firsts: FirstsLedger | null = null;
   const watcher = new LogWatcher(config.DATA_DIR, ctx.lang, (event, live) => {
-    if (live && event.type === "advancement" && event.key && firsts?.claim(event.key, event.player, event.at)) {
+    if (live && event.type === "advancement" && event.key && realm.claimFirst(event.key, event.player, event.at)) {
       event = { ...event, first: true };
       log.info(`Primero del reino: ${event.player} → ${event.key}`);
     }
@@ -88,37 +95,39 @@ function main(): void {
     if (live) alerts?.push(event);
   });
 
-  // Histórico de «primeros» desde los ficheros del mundo (en silencio).
-  const reconcileFirsts = async () => {
-    if (!firsts) return;
-    try {
-      const added = await firsts.reconcile(await ctx.world.players());
-      if (added > 0) log.info(`Primeros del reino: ${added} logros apuntados del histórico (${firsts.size} en total)`);
-    } catch (error) {
-      log.warn(`No se pudieron revisar los primeros del reino: ${error instanceof Error ? error.message : String(error)}`);
-    }
+  // Aviso al canal de administración (mundo nuevo sin temporada...). El canal se abre una vez.
+  let adminChannel: ReturnType<typeof fetchSendableChannel> | null = null;
+  const adminSay = async (message: string) => {
+    if (!config.ADMIN_CHANNEL_ID) return;
+    if (!client.isReady()) return;
+    adminChannel ??= fetchSendableChannel(client, config.ADMIN_CHANNEL_ID, "administración");
+    const channel = await adminChannel;
+    await channel?.send({ embeds: [baseEmbed().setDescription(message)], allowedMentions: { parse: [] } });
   };
-  let firstsTimer: NodeJS.Timeout | null = null;
 
-  // Hitos personales: van al canal de los logros (son hazañas también).
-  let milestones: MilestoneTracker | null = null;
-  const checkMilestones = async () => {
-    if (!milestones) return;
+  // Revisión periódica: temporada, primeros, hitos (al canal de los logros) y monedas.
+  const realmTick = async () => {
     try {
-      const crossed = await milestones.check(await ctx.world.players());
-      if (crossed.length === 0) return;
-      const names = await ctx.names.resolve(crossed.map((c) => c.uuid));
-      for (const c of crossed) {
+      const newWorld = await realm.checkSeason();
+      const season = realm.season;
+      if (newWorld && season) {
+        await adminSay(texts.temporada.mismatchAlert(safeText(newWorld, 40), safeText(season.name, 40), safeText(season.levelName, 40)));
+      }
+      const { milestones, earnings } = await realm.tick();
+      if (earnings.length > 0) log.debug(`Monedas: ${earnings.map((e) => `${e.uuid.slice(0, 8)} +${e.amount} ${e.category}`).join(", ")}`);
+      if (milestones.length === 0) return;
+      const names = await ctx.names.resolve(milestones.map((c) => c.uuid));
+      for (const c of milestones) {
         const player = names.get(c.uuid);
         if (!player) continue;
         log.info(`Hito: ${player} → ${c.id} ${c.threshold}`);
         alerts?.pushLine("advancement", texts.alerts.milestone[c.id](`**${safeText(player, 32)}**`, formatCount(c.threshold)));
       }
     } catch (error) {
-      log.warn(`No se pudieron revisar los hitos: ${error instanceof Error ? error.message : String(error)}`);
+      log.warn(`No se pudo revisar el reino (primeros, hitos, monedas): ${error instanceof Error ? error.message : String(error)}`);
     }
   };
-  let milestonesTimer: NodeJS.Timeout | null = null;
+  let realmTimer: NodeJS.Timeout | null = null;
 
   const needsMembers = heraldNeedsMembers(config);
   const client = new Client({
@@ -174,29 +183,24 @@ function main(): void {
   // Textos primero (para reconocer muertes y traducir), luego el histórico de primeros, avisos y log.
   const startLogWatch = async (ready: Client<true>) => {
     await ctx.lang.ready();
+    // Base de datos y temporada; los primeros del histórico, antes de seguir el log.
+    await realm.init();
     try {
-      firsts = await FirstsLedger.open(new JsonStore(path.join(config.STATE_DIR, "firsts.json"), firstsSchema, emptyFirsts));
+      const added = await realm.reconcileFirsts();
+      if (added > 0) log.info(`Primeros del reino: ${added} logros apuntados del histórico`);
     } catch (error) {
-      log.warn(`Sin estado de primeros del reino: ${error instanceof Error ? error.message : String(error)}`);
+      log.warn(`No se pudieron revisar los primeros del reino: ${error instanceof Error ? error.message : String(error)}`);
     }
-    await reconcileFirsts();
-    // Por si algo se escapa del log (o del bot apagado); en vivo manda el log.
-    firstsTimer = setInterval(() => void reconcileFirsts(), FIRSTS_RECONCILE_MS);
     const routes = await buildAlertRoutes(ready, config);
     if (routes.size > 0) {
       alerts = new AlertQueue(routes, {}, (error) => {
         log.warn(`No se pudo enviar un aviso: ${error instanceof Error ? error.message : String(error)}`);
       });
     }
-    try {
-      milestones = await MilestoneTracker.open(new JsonStore(path.join(config.STATE_DIR, "milestones.json"), milestonesSchema, emptyMilestones));
-    } catch (error) {
-      log.warn(`Sin estado de hitos: ${error instanceof Error ? error.message : String(error)}`);
-    }
     // Después de las rutas: lo superado con el bot apagado también se avisa.
-    // La primera vez, lo ya superado se apunta en silencio.
-    await checkMilestones();
-    milestonesTimer = setInterval(() => void checkMilestones(), MILESTONES_CHECK_MS);
+    // La primera vez, lo ya superado se apunta en silencio (hitos y monedas).
+    await realmTick();
+    realmTimer = setInterval(() => void realmTick(), REALM_TICK_MS);
     try {
       await watcher.start();
       log.info("Siguiendo el log del servidor");
@@ -215,10 +219,10 @@ function main(): void {
     stopPresence();
     watcher.stop();
     backupWatcher?.stop();
-    if (firstsTimer) clearInterval(firstsTimer);
-    if (milestonesTimer) clearInterval(milestonesTimer);
+    if (realmTimer) clearInterval(realmTimer);
     alerts?.dispose();
-    void Promise.allSettled([firsts?.flush(), milestones?.flush(), client.destroy()]).finally(() => process.exit(0));
+    realm.close();
+    void client.destroy().finally(() => process.exit(0));
   };
   process.once("SIGINT", () => { shutdown("SIGINT"); });
   process.once("SIGTERM", () => { shutdown("SIGTERM"); });

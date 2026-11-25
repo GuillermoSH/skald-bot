@@ -1,5 +1,5 @@
 /**
- * «Primeros» del servidor: quién consiguió antes que nadie cada logro.
+ * «Primeros» de una temporada: quién consiguió antes que nadie cada logro.
  *
  * - `reconcile()` lee los logros de los ficheros del mundo y apunta, sin avisar,
  *   los que aún no estaban (el histórico la primera vez; lo que pasó con el bot
@@ -11,58 +11,54 @@
  * Los logros se identifican por su clave de idioma (`advancementKey`), que sale
  * igual del id del fichero que del título del log.
  */
-import { z } from "zod";
+import type { Database } from "./db.js";
 import { advancementKey } from "./lang.js";
-import type { JsonStore } from "./state.js";
+import type { Seasons } from "./seasons.js";
 import type { PlayerRecord } from "./stats.js";
 
-const claimSchema = z.object({
+export interface FirstClaim {
   /** Nombre del jugador (si vino del log) o null. */
-  player: z.string().nullable(),
+  player: string | null;
   /** UUID del jugador (si vino de los ficheros) o null. */
-  uuid: z.string().nullable(),
-  at: z.iso.datetime(),
+  uuid: string | null;
+  at: string;
   /** Se anunció en vivo (no es del histórico). */
-  live: z.boolean(),
-});
+  live: boolean;
+}
 
-export const firstsSchema = z.object({
-  version: z.literal(1),
-  /** Ya se leyó el histórico de los ficheros al menos una vez. */
-  seeded: z.boolean(),
-  claims: z.record(z.string(), claimSchema),
-});
-
-export type FirstsState = z.infer<typeof firstsSchema>;
-export type FirstClaim = z.infer<typeof claimSchema>;
-
-export const emptyFirsts = (): FirstsState => ({ version: 1, seeded: false, claims: {} });
+interface FirstRow {
+  player_name: string | null;
+  player_uuid: string | null;
+  at: string;
+  live: number;
+}
 
 export class FirstsLedger {
-  private constructor(
-    private state: FirstsState,
-    private readonly store: JsonStore<FirstsState> | null,
-  ) {}
+  private seededCache: boolean;
 
-  /** Con `store` null, todo queda en memoria (para pruebas o sin STATE_DIR). */
-  static async open(store: JsonStore<FirstsState> | null): Promise<FirstsLedger> {
-    return new FirstsLedger(store ? await store.load() : emptyFirsts(), store);
+  constructor(
+    private readonly db: Database,
+    private readonly seasons: Seasons,
+    readonly seasonId: number,
+  ) {
+    this.seededCache = seasons.byId(seasonId)?.firstsSeeded ?? false;
   }
 
   get seeded(): boolean {
-    return this.state.seeded;
+    return this.seededCache;
   }
 
   get size(): number {
-    return Object.keys(this.state.claims).length;
+    return this.db.get<{ n: number }>("SELECT COUNT(*) AS n FROM firsts WHERE season_id = ?", this.seasonId)?.n ?? 0;
   }
 
   get(key: string): FirstClaim | undefined {
-    return this.state.claims[key];
+    const r = this.db.get<FirstRow>("SELECT * FROM firsts WHERE season_id = ? AND key = ?", this.seasonId, key);
+    return r ? { player: r.player_name, uuid: r.player_uuid, at: r.at, live: r.live === 1 } : undefined;
   }
 
   /** Apunta en silencio lo que haya en los ficheros y no estuviera. Devuelve cuántos nuevos. */
-  async reconcile(players: readonly PlayerRecord[]): Promise<number> {
+  reconcile(players: readonly PlayerRecord[]): number {
     const earliest = new Map<string, { uuid: string; at: Date }>();
     for (const player of players) {
       for (const adv of player.advancements) {
@@ -72,30 +68,37 @@ export class FirstsLedger {
         if (!best || adv.doneAt < best.at) earliest.set(key, { uuid: player.uuid, at: adv.doneAt });
       }
     }
-
-    let added = 0;
-    for (const [key, { uuid, at }] of earliest) {
-      if (this.state.claims[key]) continue;
-      this.state.claims[key] = { player: null, uuid, at: at.toISOString(), live: false };
-      added++;
-    }
-    if (added > 0 || !this.state.seeded) {
-      this.state.seeded = true;
-      await this.store?.save(this.state);
+    const added = this.db.transaction(() => {
+      let n = 0;
+      for (const [key, { uuid, at }] of earliest) {
+        n += this.db.run(
+          "INSERT OR IGNORE INTO firsts (season_id, key, player_uuid, player_name, at, live) VALUES (?, ?, ?, NULL, ?, 0)",
+          this.seasonId,
+          key,
+          uuid,
+          at.toISOString(),
+        ).changes;
+      }
+      return n;
+    });
+    if (!this.seededCache) {
+      this.seasons.markFirstsSeeded(this.seasonId);
+      this.seededCache = true;
     }
     return added;
   }
 
-  /** Espera a que se guarde lo pendiente (cierre ordenado, pruebas). */
-  flush(): Promise<void> {
-    return this.store?.flush() ?? Promise.resolve();
-  }
-
   /** ¿Es el primero del reino? Si lo es, queda apuntado. */
   claim(key: string, player: string, at: Date): boolean {
-    if (!this.state.seeded || this.state.claims[key]) return false;
-    this.state.claims[key] = { player, uuid: null, at: at.toISOString(), live: true };
-    void this.store?.save(this.state);
-    return true;
+    if (!this.seededCache) return false;
+    return (
+      this.db.run(
+        "INSERT OR IGNORE INTO firsts (season_id, key, player_uuid, player_name, at, live) VALUES (?, ?, NULL, ?, ?, 1)",
+        this.seasonId,
+        key,
+        player,
+        at.toISOString(),
+      ).changes === 1
+    );
   }
 }

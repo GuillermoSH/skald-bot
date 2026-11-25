@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MILESTONES, MilestoneTracker, reachedThreshold } from "../src/core/milestones.js";
 import type { PlayerRecord } from "../src/core/stats.js";
+import { memoryRealm } from "./helpers.js";
 
 const HOUR = 72_000;
 
@@ -22,27 +23,27 @@ describe("hitos", () => {
     expect(reachedThreshold(MILESTONES.play_time, 260)).toBe(250);
   });
 
-  it("lo que ya tenía al empezar no se anuncia; lo nuevo sí, una vez", async () => {
-    const tracker = await MilestoneTracker.open(null);
-    expect(await tracker.check([player("a", 60, 12)])).toEqual([]);
-    expect(await tracker.check([player("a", 60, 12)])).toEqual([]);
-    expect(await tracker.check([player("a", 101, 12, 1)])).toEqual([
+  it("lo que ya tenía al empezar no se anuncia; lo nuevo sí, una vez", () => {
+    const tracker = new MilestoneTracker(memoryRealm().db, 1);
+    expect(tracker.check([player("a", 60, 12)])).toEqual([]);
+    expect(tracker.check([player("a", 60, 12)])).toEqual([]);
+    expect(tracker.check([player("a", 101, 12, 1)])).toEqual([
       { uuid: "a", id: "play_time", threshold: 100 },
       { uuid: "a", id: "dragon", threshold: 1 },
     ]);
-    expect(await tracker.check([player("a", 102, 12, 2)])).toEqual([]);
+    expect(tracker.check([player("a", 102, 12, 2)])).toEqual([]);
   });
 
-  it("si salta varias cifras de golpe, solo la más alta", async () => {
-    const tracker = await MilestoneTracker.open(null);
-    await tracker.check([player("a", 1)]);
-    expect(await tracker.check([player("a", 300)])).toEqual([{ uuid: "a", id: "play_time", threshold: 250 }]);
+  it("si salta varias cifras de golpe, solo la más alta", () => {
+    const tracker = new MilestoneTracker(memoryRealm().db, 1);
+    tracker.check([player("a", 1)]);
+    expect(tracker.check([player("a", 300)])).toEqual([{ uuid: "a", id: "play_time", threshold: 250 }]);
   });
 
-  it("un jugador nuevo empieza en silencio", async () => {
-    const tracker = await MilestoneTracker.open(null);
-    await tracker.check([player("a", 1)]);
-    expect(await tracker.check([player("a", 1), player("b", 20)])).toEqual([]);
-    expect(await tracker.check([player("b", 55)])).toEqual([{ uuid: "b", id: "play_time", threshold: 50 }]);
+  it("un jugador nuevo empieza en silencio", () => {
+    const tracker = new MilestoneTracker(memoryRealm().db, 1);
+    tracker.check([player("a", 1)]);
+    expect(tracker.check([player("a", 1), player("b", 20)])).toEqual([]);
+    expect(tracker.check([player("b", 55)])).toEqual([{ uuid: "b", id: "play_time", threshold: 50 }]);
   });
 });

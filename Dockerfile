@@ -38,4 +38,5 @@ RUN mkdir /state && chown node:node /state
 
 # Usuario sin privilegios (UID 1000): lee los ficheros del mundo montados en solo lectura.
 USER node
-CMD ["node", "dist/index.js"]
+# node:sqlite sigue marcado como experimental en Node 24: sin el aviso en cada arranque.
+CMD ["node", "--disable-warning=ExperimentalWarning", "dist/index.js"]
