@@ -250,6 +250,18 @@ export const texts = {
       "!tesoro — tus monedas de plata",
     ],
     notLinked: "Primero únete al reino en Discord: pulsa «Acepto las runas» en #runas.",
+    // Saludo al entrar al servidor (solo lo ve quien entra).
+    welcome: [
+      (p: string) => `¡Salve, ${p}! Las brasas del salón siguen encendidas.`,
+      (p: string) => `${p} cruza el Bifröst. Bienvenido de vuelta al reino.`,
+      (p: string) => `Los cuervos ya cantan tu llegada, ${p}.`,
+      (p: string) => `Odín te saluda, ${p}. Que hoy la lava no te encuentre.`,
+    ],
+    company: (names: string) => `En el reino: ${names}.`,
+    alone: "Eres el único guerrero en las salas ahora mismo.",
+    linkedTip: (coins: string) => `Tienes ${coins} monedas de plata. Escribe !ayuda para ver lo que sé hacer.`,
+    linkedTipNoCoins: "Escribe !ayuda para ver lo que sé hacer.",
+    notLinkedTip: "¿Aún no te has unido al reino? Pulsa «Acepto las runas» en #runas (Discord) y podrás usar mis comandos con «!».",
     unknown: (cmd: string) => `No conozco «!${cmd}». Escribe !ayuda.`,
     slowDown: "Despacio, guerrero: un comando cada pocos segundos.",
     tooMany: "Ya has creado bastantes cosas esta hora. Inténtalo más tarde.",

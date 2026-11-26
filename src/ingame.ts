@@ -24,6 +24,10 @@ const g = texts.game;
 const COOLDOWN_MS = 5_000;
 const CREATES_PER_HOUR = 3;
 const YEAR_MS = 366 * 86_400_000;
+/** Espera tras entrar (para que el chat del jugador ya esté cargado). */
+const WELCOME_DELAY_MS = 3_000;
+/** No se vuelve a saludar a quien entró hace poco (reconexiones). */
+const WELCOME_COOLDOWN_MS = 10 * 60_000;
 
 /** "!recordar 2h | regar" → { name: "recordar", args: "2h | regar" }. */
 export function parseGameCommand(message: string): { name: string; args: string } | null {
@@ -51,11 +55,39 @@ export function splitWhen(args: string, now: Date, timeZone: string): { at: Date
 export class GameChat {
   private readonly lastCommand = new Map<string, number>();
   private readonly creations = new Map<string, number[]>();
+  private readonly welcomed = new Map<string, number>();
+  private welcomeIndex = 0;
 
   constructor(
     private readonly ctx: CommandContext,
     private readonly client: Client<true>,
   ) {}
+
+  /** Alguien ha entrado al servidor: saludo privado en el chat del juego. */
+  async onJoin(player: string, delayMs = WELCOME_DELAY_MS): Promise<void> {
+    const now = Date.now();
+    if (now - (this.welcomed.get(player) ?? 0) < WELCOME_COOLDOWN_MS) return;
+    this.welcomed.set(player, now);
+    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+    const phrase = g.welcome[this.welcomeIndex++ % g.welcome.length] ?? g.welcome[0];
+    await this.reply(player, phrase(player));
+
+    const others = await this.ctx.rcon
+      .listPlayers()
+      .then((l) => l.names.filter((n) => n !== player))
+      .catch(() => null);
+    if (others) await this.reply(player, others.length > 0 ? g.company(others.slice(0, 10).join(", ")) : g.alone);
+
+    const uuid = await this.ctx.names.uuidOf(player);
+    const link = uuid ? this.ctx.realm.links?.byUuid(uuid) : null;
+    if (uuid && link?.status === "active") {
+      const economy = this.ctx.realm.economy;
+      await this.reply(player, economy ? g.linkedTip(formatCount(economy.balance(uuid))) : g.linkedTipNoCoins);
+    } else if (!link) {
+      await this.reply(player, g.notLinkedTip);
+    }
+  }
 
   async onChat(player: string, message: string): Promise<void> {
     const cmd = parseGameCommand(message);

@@ -96,3 +96,39 @@ describe("comandos con «!»", () => {
     expect(said).toHaveLength(2);
   });
 });
+
+describe("saludo al entrar", () => {
+  function setup(link: { status: string; discordId: string } | null, online: string[]) {
+    const said: { target: string; text: string }[] = [];
+    const ctx = {
+      config: { TIMEZONE: "UTC", DISCORD_GUILD_ID: "g", COMMAND_CHANNEL_IDS: [] },
+      names: { uuidOf: () => Promise.resolve(link ? "u" : "otro") },
+      realm: { links: { byUuid: () => link }, economy: { balance: () => 1234 }, reminders: null },
+      rcon: {
+        listPlayers: () => Promise.resolve({ online: online.length, max: 20, names: online }),
+        tellraw: (target: string, parts: TextPart[]) => {
+          said.push({ target, text: parts.map((p) => p.text).join("") });
+          return Promise.resolve();
+        },
+      },
+    } as unknown as CommandContext;
+    return { chat: new GameChat(ctx, {} as Client<true>), said };
+  }
+
+  it("unido: saludo, quién más está y sus monedas; solo a él; sin repetir al reconectar", async () => {
+    const { chat, said } = setup({ status: "active", discordId: "d" }, ["Ragnar", "Lagertha"]);
+    await chat.onJoin("Ragnar", 0);
+    expect(said.every((s) => s.target === "Ragnar")).toBe(true);
+    expect(said.map((s) => s.text).join(" ")).toMatch(/Ragnar.*Lagertha.*1\.?234 monedas/s);
+    await chat.onJoin("Ragnar", 0);
+    expect(said).toHaveLength(3);
+  });
+
+  it("sin unirse: le dice cómo hacerlo; solo: lo dice", async () => {
+    const { chat, said } = setup(null, ["Floki"]);
+    await chat.onJoin("Floki", 0);
+    const text = said.map((s) => s.text).join(" ");
+    expect(text).toContain("único guerrero");
+    expect(text).toContain("Acepto las runas");
+  });
+});

@@ -109,6 +109,7 @@ Mojang confirma que la cuenta existe, no que sea de quien la reclama: lo que da 
 
 Con `GAME_CHAT_ENABLED=true`, Skald también habla y escucha en el chat de Minecraft, sin cuenta de Minecraft ni jugador falso (no aparece en la lista de conectados):
 
+- **Saluda** a quien entra al servidor (solo lo ve esa persona): quién más está conectado y, si está unido al reino, sus monedas; si no, cómo unirse. No repite el saludo si se reconecta enseguida.
 - **Habla** con `tellraw` por RCON, siempre con la misma plantilla cerrada: el texto va dentro de un componente JSON, sin caracteres de control ni códigos de formato, así que nada de lo que escriba un jugador puede convertirse en otro comando. Anuncia las quedadas nuevas y su aviso de 30 minutos.
 - **Escucha** el log: los mensajes que empiezan por `!` son comandos, solo para quien está unido al reino (salvo `!ayuda`), con un límite de un comando cada pocos segundos y de tres creaciones por hora:
 

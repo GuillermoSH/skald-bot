@@ -112,6 +112,12 @@ function main(): void {
         log.warn(`Chat del juego (${event.player}): ${error instanceof Error ? error.message : String(error)}`);
       });
     }
+    // Saludo en el chat del juego a quien entra.
+    if (live && event.type === "join" && gameChat) {
+      void gameChat.onJoin(event.player).catch((error: unknown) => {
+        log.warn(`Saludo en el juego (${event.player}): ${error instanceof Error ? error.message : String(error)}`);
+      });
+    }
     // Primer login de alguien unido al reino: pasa a Einherjar.
     if (live && event.type === "join" && ctx.linking && client.isReady()) {
       const ready = client;
