@@ -109,7 +109,7 @@ Mojang confirma que la cuenta existe, no que sea de quien la reclama: lo que da 
 
 Con `GAME_CHAT_ENABLED=true`, Skald también habla y escucha en el chat de Minecraft, sin cuenta de Minecraft ni jugador falso (no aparece en la lista de conectados):
 
-- **Saluda** a quien entra al servidor (solo lo ve esa persona): quién más está conectado y, si está unido al reino, sus monedas; si no, cómo unirse. No repite el saludo si se reconecta enseguida.
+- **Saluda** a quien entra al servidor con un único mensaje (solo lo ve esa persona): su cabeza, quién más está conectado y, si está unido al reino, sus monedas y un `!ayuda` que se puede pulsar; si no, cómo unirse. Suena un cuerno, solo para él. No repite el saludo si se reconecta enseguida.
 - **Habla** con `tellraw` por RCON, siempre con la misma plantilla cerrada: el texto va dentro de un componente JSON, sin caracteres de control ni códigos de formato, así que nada de lo que escriba un jugador puede convertirse en otro comando. Anuncia las quedadas nuevas y su aviso de 30 minutos.
 - **Escucha** el log: los mensajes que empiezan por `!` son comandos, solo para quien está unido al reino (salvo `!ayuda`), con un límite de un comando cada pocos segundos y de tres creaciones por hora:
 
@@ -144,7 +144,7 @@ Con `COMMAND_CHANNEL_IDS`, Skald solo responde a los comandos en esos canales (y
 ## Diseño y seguridad
 
 - **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura. Lo que recuerda (temporadas, primeros del reino, hitos, monedas) lo guarda en una base de datos SQLite (`node:sqlite`, sin dependencias nativas) en `STATE_DIR` (en Docker, la carpeta `state/` junto al compose), con una copia diaria en `STATE_DIR/backups` (se guardan 7); la configuración rechaza que esté dentro del mundo. Esa carpeta no la cubren las copias del servidor de Minecraft: conviene incluirla en una copia fuera de la máquina.
-- **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`, y `tellraw` con una plantilla cerrada si el chat del juego está activo). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
+- **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`, y `tellraw` y `playsound` con plantillas cerradas si el chat del juego está activo). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
 - **Sin menciones.** Todas las respuestas se envían con `allowedMentions: { parse: [] }`, y el texto que viene del servidor (MOTD, nombres) se escapa.
 - **Configuración validada al arrancar.** Si falta una variable obligatoria, el bot no arranca, y los errores nunca muestran valores (pueden ser secretos).
 - **Separación núcleo / temática.** `src/core/` habla con el servidor y no sabe nada de Discord ni del tono; los textos están en `src/util/texts.ts`.

@@ -2,7 +2,7 @@ import type { Client } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../src/commands/types.js";
 import { LogParser } from "../src/core/logwatch.js";
-import { buildTellraw, type TextPart } from "../src/core/rcon.js";
+import { buildPlaysound, buildTellraw, type TextPart } from "../src/core/rcon.js";
 import { GameChat, parseGameCommand, splitWhen } from "../src/ingame.js";
 import { fixtureTranslator } from "./helpers.js";
 
@@ -71,7 +71,7 @@ describe("comandos con «!»", () => {
       realm: { links: { byUuid: () => link }, economy: { balance: () => 42 }, reminders: null },
       rcon: {
         tellraw: vi.fn((target: string, parts: TextPart[]) => {
-          said.push({ target, text: parts.map((p) => p.text).join("") });
+          said.push({ target, text: parts.map((p) => ("text" in p ? p.text : "br" in p ? "\n" : `[${p.head}]`)).join("") });
           return Promise.resolve();
         }),
       },
@@ -105,9 +105,13 @@ describe("saludo al entrar", () => {
       names: { uuidOf: () => Promise.resolve(link ? "u" : "otro") },
       realm: { links: { byUuid: () => link }, economy: { balance: () => 1234 }, reminders: null },
       rcon: {
+        playSound: (target: string) => {
+          said.push({ target, text: "♪" });
+          return Promise.resolve();
+        },
         listPlayers: () => Promise.resolve({ online: online.length, max: 20, names: online }),
         tellraw: (target: string, parts: TextPart[]) => {
-          said.push({ target, text: parts.map((p) => p.text).join("") });
+          said.push({ target, text: parts.map((p) => ("text" in p ? p.text : "br" in p ? "\n" : `[${p.head}]`)).join("") });
           return Promise.resolve();
         },
       },
@@ -115,13 +119,15 @@ describe("saludo al entrar", () => {
     return { chat: new GameChat(ctx, {} as Client<true>), said };
   }
 
-  it("unido: saludo, quién más está y sus monedas; solo a él; sin repetir al reconectar", async () => {
+  it("unido: un solo mensaje (cabeza, quién más está, monedas) y el cuerno; solo a él; sin repetir", async () => {
     const { chat, said } = setup({ status: "active", discordId: "d" }, ["Ragnar", "Lagertha"]);
     await chat.onJoin("Ragnar", 0);
     expect(said.every((s) => s.target === "Ragnar")).toBe(true);
-    expect(said.map((s) => s.text).join(" ")).toMatch(/Ragnar.*Lagertha.*1\.?234 monedas/s);
+    expect(said).toHaveLength(2);
+    expect(said[0]?.text).toMatch(/^\[Skald\] \[Ragnar\] ⚔ .*Ragnar.*\n.*Lagertha.*\n.*1\.?234 monedas.*!ayuda$/s);
+    expect(said[1]?.text).toBe("♪");
     await chat.onJoin("Ragnar", 0);
-    expect(said).toHaveLength(3);
+    expect(said).toHaveLength(2);
   });
 
   it("sin unirse: le dice cómo hacerlo; solo: lo dice", async () => {
@@ -130,5 +136,27 @@ describe("saludo al entrar", () => {
     const text = said.map((s) => s.text).join(" ");
     expect(text).toContain("único guerrero");
     expect(text).toContain("Acepto las runas");
+  });
+});
+
+describe("plantillas: cabeza, salto de línea y sonido", () => {
+  it("cabeza y salto solo como piezas de Skald; el texto de un jugador no mete saltos", () => {
+    const cmd = buildTellraw("@a", [{ head: "Ragnar" }, { br: true }, { text: "a\nb" }]);
+    const json = JSON.parse(cmd.slice("tellraw @a ".length)) as unknown[];
+    expect(json[1]).toEqual({ object: "player", player: { name: "Ragnar" }, hat: true });
+    expect(json[2]).toEqual({ text: "\n" });
+    expect(json[3]).toEqual({ text: "a b" });
+    expect(() => buildTellraw("@a", [{ head: "@e" }])).toThrow();
+  });
+
+  it("clic para dejar un comando: solo comandos «!» de Skald", () => {
+    expect(buildTellraw("@a", [{ text: "x", suggest: "!ayuda" }])).toContain("suggest_command");
+    expect(buildTellraw("@a", [{ text: "x", suggest: "/op Ragnar" }])).not.toContain("suggest_command");
+  });
+
+  it("playsound: sonido de la lista y a un jugador", () => {
+    expect(buildPlaysound("Ragnar", "horn")).toBe("playsound minecraft:item.goat_horn.sound.0 master Ragnar ~ ~ ~ 0.5 1 0.5");
+    expect(() => buildPlaysound("@a", "horn")).toThrow();
+    expect(() => buildPlaysound("Ragnar x", "horn")).toThrow();
   });
 });

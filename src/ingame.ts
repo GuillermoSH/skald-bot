@@ -13,6 +13,7 @@ import type { Client, SendableChannels } from "discord.js";
 import { publishPoll } from "./commands/encuesta.js";
 import { createQuedada } from "./commands/quedada.js";
 import type { CommandContext } from "./commands/types.js";
+import type { TextPart } from "./core/rcon.js";
 import { MAX_PENDING_PER_USER } from "./core/reminders.js";
 import { parseWhen } from "./core/when.js";
 import { formatCount } from "./util/format.js";
@@ -71,22 +72,37 @@ export class GameChat {
     if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
     const phrase = g.welcome[this.welcomeIndex++ % g.welcome.length] ?? g.welcome[0];
-    await this.reply(player, phrase(player));
-
     const others = await this.ctx.rcon
       .listPlayers()
       .then((l) => l.names.filter((n) => n !== player))
       .catch(() => null);
-    if (others) await this.reply(player, others.length > 0 ? g.company(others.slice(0, 10).join(", ")) : g.alone);
-
     const uuid = await this.ctx.names.uuidOf(player);
     const link = uuid ? this.ctx.realm.links?.byUuid(uuid) : null;
-    if (uuid && link?.status === "active") {
-      const economy = this.ctx.realm.economy;
-      await this.reply(player, economy ? g.linkedTip(formatCount(economy.balance(uuid))) : g.linkedTipNoCoins);
-    } else if (!link) {
-      await this.reply(player, g.notLinkedTip);
+    const economy = this.ctx.realm.economy;
+
+    // Un solo mensaje: cabeza y saludo; quién más está; monedas o cómo unirse.
+    const [mark1, mark2] = g.lineMarks;
+    const parts: TextPart[] = [
+      { text: g.prefix, color: "gold", bold: true },
+      { head: player },
+      { text: ` ${g.welcomeMark}`, color: "gold" },
+      { text: phrase(player), color: "yellow" },
+    ];
+    if (others) {
+      parts.push({ br: true }, { text: `  ${mark1}`, color: "gold" });
+      parts.push({ text: others.length > 0 ? g.company(others.slice(0, 10).join(", ")) : g.alone, color: "gray" });
     }
+    parts.push({ br: true }, { text: `  ${mark2}`, color: "gold" });
+    if (uuid && link?.status === "active") {
+      if (economy) parts.push({ text: `${g.coins(formatCount(economy.balance(uuid)))} · `, color: "gray" });
+      parts.push({ text: g.helpLink, color: "aqua", suggest: "!ayuda", hover: g.helpHover });
+    } else {
+      parts.push({ text: g.notLinkedTip, color: "gray" });
+    }
+    await this.ctx.rcon.tellraw(player, parts).catch((error: unknown) => {
+      log.warn(`No se pudo saludar en el juego a ${player}: ${error instanceof Error ? error.message : String(error)}`);
+    });
+    await this.ctx.rcon.playSound(player, "horn").catch(() => undefined);
   }
 
   async onChat(player: string, message: string): Promise<void> {
