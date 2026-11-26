@@ -236,6 +236,53 @@ export const texts = {
     changed: "Último cambio",
   },
 
+  // Vinculación Discord ↔ Minecraft (botón de las runas, /vincular, /desvincular)
+  link: {
+    button: "Acepto las runas",
+    modalTitle: "Únete al reino",
+    modalLabel: "Tu nombre en Minecraft",
+    modalDescription: "El de tu cuenta de Java (el que ves al entrar al juego).",
+    invalidName: "Ese no parece un nombre de Minecraft (3-16 letras, números o _).",
+    notFound: (name: string) => `Mojang no conoce ninguna cuenta llamada **${name}**. ¿Está bien escrito?`,
+    mojangDown: "Los cuervos no llegan hasta Mojang ahora mismo. Inténtalo en un rato.",
+    confirmTitle: "¿Eres tú?",
+    confirmBody: (name: string) =>
+      `Vas a unir tu cuenta de Discord con **${name}**. Solo se puede hacer **una vez**; si te equivocas, tendrá que arreglarlo el Jarl.`,
+    confirm: "Sí, soy yo",
+    cancel: "Cancelar",
+    cancelled: "Cancelado. Puedes volver a pulsar «Acepto las runas» cuando quieras.",
+    alreadyLinked: (name: string) => `Ya estás unido al reino como **${name}**.`,
+    uuidTaken: "Esa cuenta de Minecraft ya está unida a otra persona. Si es tuya, habla con el Jarl.",
+    linkedPending: (name: string) =>
+      `✅ Hecho, **${name}**. En cuanto entres al servidor por primera vez serás **Einherjar** y verás todo el reino. Para entrar, escribe al Jarl.`,
+    linkedActive: (name: string) => `⚔️ Bienvenido, **${name}**: ya eres **Einherjar** y ves todo el reino.`,
+    promotedTitle: "⚔️ Has llegado al Valhalla",
+    promotedBody: (name: string) =>
+      `**${name}**, has entrado al reino por primera vez: desde hoy eres **Einherjar** y ves todos los salones. ¡Skål!`,
+    disabled: "La unión al reino no está disponible ahora mismo.",
+    // Avisos al canal de administración.
+    adminLinked: (user: string, name: string, status: string) => `🔗 ${user} se unió como **${name}** (${status}).`,
+    adminLinkedBy: (user: string, name: string, admin: string, status: string) => `🔗 ${admin} unió a ${user} con **${name}** (${status}).`,
+    adminPromoted: (user: string, name: string) => `⚔️ ${user} (**${name}**) entró al servidor: ahora es Einherjar.`,
+    adminConflict: (user: string, name: string, other: string) => `⚠️ ${user} intentó unirse como **${name}**, que ya está unido a ${other}.`,
+    adminUnlinked: (user: string, name: string, admin: string) => `✂️ ${admin} desvinculó a ${user} de **${name}**.`,
+    statusPending: "pendiente de entrar",
+    statusActive: "Einherjar",
+    // /vincular y /desvincular
+    vincularDescription: "Une a alguien con su cuenta de Minecraft (solo el Jarl)",
+    desvincularDescription: "Deshace la unión de alguien (solo el Jarl)",
+    userOption: "usuario",
+    userOptionDescription: "La persona de Discord",
+    nameOption: "nombre",
+    nameOptionDescription: "Su nombre en Minecraft",
+    onlyJarl: "Solo el Jarl puede unir o separar guerreros.",
+    adminDone: (user: string, name: string, status: string) => `🔗 ${user} queda unido como **${name}** (${status}).`,
+    adminTaken: (user: string, name: string) => `${user} ya está unido como **${name}**. Desvincúlalo primero.`,
+    adminUuidTaken: (other: string) => `Esa cuenta de Minecraft ya está unida a ${other}.`,
+    unlinked: (user: string, name: string) => `✂️ ${user} ya no está unido a **${name}**. Sus roles no se tocan.`,
+    notLinked: (user: string) => `${user} no está unido a ninguna cuenta.`,
+  },
+
   // /encuesta (encuestas nativas de Discord)
   encuesta: {
     question: "pregunta",
@@ -497,11 +544,12 @@ export const texts = {
     joinIntro: (version: string | null) =>
       `Minecraft **Java${version ? ` ${version}` : ""}**, sin mods. El reino está protegido tras el Bifröst, así que hace falta un túnel de acceso:`,
     // `to` = "a @Fulano" o "al Jarl"
-    joinSteps: (to: string) => [
+    joinSteps: (to: string, button: boolean) => [
+      ...(button ? ["Pulsa **📜 Acepto las runas** aquí abajo y escribe tu nombre de Minecraft."] : []),
       `Pídele el túnel ${to}.`,
       "Conéctate al túnel.",
       "En Minecraft: **Multijugador → Añadir servidor**, con la dirección de abajo.",
-      "¡A jugar! Recibirás el rol **⚔️ Einherjar**.",
+      button ? "¡A jugar! Al entrar por primera vez serás **⚔️ Einherjar** y verás todo el reino." : "¡A jugar! Recibirás el rol **⚔️ Einherjar**.",
     ],
     addressHeading: "### 📍 Dirección del reino",
     jarlFallback: "al Jarl",

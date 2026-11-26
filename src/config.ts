@@ -64,6 +64,8 @@ export const configSchema = discordSchema.extend({
   HERALD_CHANNEL_ID: snowflake.optional(),
   RULES_CHANNEL_ID: snowflake.optional(),
   AUTO_ROLE_ID: snowflake.optional(),
+  // Rol de quien juega (Einherjar): activa la unión al reino (botón en las runas).
+  PLAYER_ROLE_ID: snowflake.optional(),
   // Dirección del servidor de Minecraft que se enseña en las runas (opcional).
   MC_PUBLIC_ADDRESS: z.string().trim().min(1).max(100).optional(),
 

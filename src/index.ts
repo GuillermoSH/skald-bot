@@ -30,6 +30,8 @@ import { Herald, heraldNeedsMembers } from "./herald.js";
 import { Realm } from "./realm.js";
 import { startPanel } from "./panel.js";
 import { startReminderWatch } from "./reminder-watch.js";
+import { Linking, LINK_PREFIX } from "./linking.js";
+import { MojangClient } from "./core/mojang.js";
 import { publishRules } from "./rules.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { baseEmbed, COLORS } from "./util/embeds.js";
@@ -90,6 +92,7 @@ function main(): void {
     chronicle: new Chronicle(),
     deaths: new DeathArchive(config.DATA_DIR, lang),
     realm,
+    linking: null,
   };
 
   let alerts: AlertQueue | null = null;
@@ -100,6 +103,13 @@ function main(): void {
     }
     ctx.chronicle.add(event);
     if (live) alerts?.push(event);
+    // Primer login de alguien unido al reino: pasa a Einherjar.
+    if (live && event.type === "join" && ctx.linking && client.isReady()) {
+      const ready = client;
+      void ctx.linking.onPlayerJoin(ready, event.player).catch((error: unknown) => {
+        log.warn(`Unión al reino (entrada de ${event.player}): ${error instanceof Error ? error.message : String(error)}`);
+      });
+    }
   });
 
   // Aviso al canal de administración (mundo nuevo sin temporada...). El canal se abre una vez.
@@ -178,13 +188,15 @@ function main(): void {
 
   const startHerald = async (ready: Client<true>) => {
     try {
-      if (needsMembers) await new Herald(config).attach(ready);
+      // Quien vuelve al Discord y ya era Einherjar recupera su rol.
+      if (needsMembers) await new Herald(config, (id) => ctx.linking?.roleOnJoin(id) ?? config.AUTO_ROLE_ID ?? null).attach(ready);
       if (config.RULES_CHANNEL_ID) {
         const status = await getServerStatus(config.MC_HOST, config.MC_PORT, config.RCON_TIMEOUT_MS);
         await publishRules(ready, config.RULES_CHANNEL_ID, {
           version: status.online ? status.version : null,
           address: config.MC_PUBLIC_ADDRESS ?? null,
           jarlId: config.ADMIN_USER_IDS[0] ?? null,
+          linkButton: Boolean(config.PLAYER_ROLE_ID),
         });
       }
     } catch (error) {
@@ -197,6 +209,11 @@ function main(): void {
     await ctx.lang.ready();
     // Base de datos y temporada; los primeros del histórico, antes de seguir el log.
     await realm.init();
+    const links = realm.links;
+    if (config.PLAYER_ROLE_ID && links) {
+      ctx.linking = new Linking({ ...config, PLAYER_ROLE_ID: config.PLAYER_ROLE_ID }, links, new MojangClient(), ctx.names, world, (m) => adminSay(m));
+      log.info("Unión al reino activa (botón en las runas)");
+    }
     try {
       const added = await realm.reconcileFirsts();
       if (added > 0) log.info(`Primeros del reino: ${added} logros apuntados del histórico`);
@@ -231,6 +248,12 @@ function main(): void {
     else if (interaction.isAutocomplete()) void handleAutocomplete(interaction, ctx);
     else if (interaction.isButton() && interaction.customId === SEASON_BUTTON_ID) void handleComponent(interaction, () => handleSeasonButton(interaction, ctx));
     else if (interaction.isModalSubmit() && isSeasonModal(interaction.customId)) void handleComponent(interaction, () => handleSeasonModal(interaction, ctx));
+    else if ((interaction.isButton() || interaction.isModalSubmit()) && interaction.customId.startsWith(LINK_PREFIX)) {
+      void handleComponent(interaction, async () => {
+        if (ctx.linking) await ctx.linking.handle(interaction);
+        else await interaction.reply({ content: texts.link.disabled, flags: MessageFlags.Ephemeral });
+      });
+    }
   });
 
   const shutdown = (signal: string) => {

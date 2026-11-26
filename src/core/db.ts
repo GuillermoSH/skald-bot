@@ -106,6 +106,19 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX reminders_pending ON reminders (sent_at, due_at);
   `,
+  // 5: vinculación Discord ↔ Minecraft (una cuenta por persona, y una persona por cuenta).
+  `
+  CREATE TABLE links (
+    discord_id   TEXT PRIMARY KEY,
+    uuid         TEXT NOT NULL UNIQUE,
+    mc_name      TEXT NOT NULL,
+    status       TEXT NOT NULL,
+    linked_at    TEXT NOT NULL,
+    linked_by    TEXT,
+    activated_at TEXT,
+    last_seen    TEXT
+  );
+  `,
 ];
 
 export class Database {

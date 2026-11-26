@@ -116,6 +116,7 @@ GLYPHS = {
     "E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
     "F": ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
     "G": [".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."],
+    "H": ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
     "I": ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
     "J": ["..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."],
     "L": ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
@@ -885,6 +886,96 @@ def panel_banner(state: str) -> Image.Image:
     return c.export()
 
 
+WARRIOR = [  # guerrero de espaldas, espada en alto
+    "......#.....",
+    "......#.....",
+    "......#.....",
+    "...##.#.....",
+    "..####*.....",
+    "..####......",
+    ".######.....",
+    "########....",
+    "########....",
+    ".######.....",
+    ".##..##.....",
+    ".##..##.....",
+    "##....##....",
+]
+
+
+def einherjar(c: Px, f: int) -> None:
+    """Un guerrero llega a las puertas abiertas del salón del Valhalla."""
+    ph = f / FRAMES * math.tau
+    horizon = 58
+    sky(c, horizon, warm=0.9)
+    aurora(c, f, top=10, strength=1.0)
+    stars(c, horizon, f, seed=101, count=50)
+    mountains(c, horizon, seed=61, color="mtnFar", height=14, rough=2.0, xs=(0, 200), snow=True)
+    c.rect(0, horizon, c.w, c.h, "mtnNear")
+    cx = 100
+    # Salón: muros de madera, tejado a dos aguas con cabezas de dragón cruzadas.
+    left, right, wall_top = 52, 148, 36
+    for y in range(wall_top, horizon + 1):
+        for x in range(left, right + 1):
+            col = "wood1" if (x // 4) % 2 else "wood0"
+            if y in (wall_top, horizon) or x in (left, right):
+                col = "black"
+            c.p(x, y, col)
+    for y in range(18, wall_top + 1):  # tejado
+        half = (y - 18) * 3 + 4
+        for x in range(int(cx - half), int(cx + half) + 1):
+            if left - 6 <= x <= right + 6:
+                c.p(x, y, "wood0" if (x + y) % 3 else "black")
+    c.line([(left - 6, wall_top), (cx, 17), (right + 6, wall_top)], "black")
+    for side in (-1, 1):  # cabezas de dragón en el caballete
+        c.line([(cx, 17), (cx + side * 8, 9)], "black")
+        c.disc(cx + side * 9, 8, 1.5, "black")
+    # Escudos en la pared.
+    for k, sx in enumerate((62, 74, 126, 138)):
+        c.disc(sx, 45, 4, "black")
+        c.disc(sx, 45, 3, ("brasa", "gold", "amber", "brasa")[k])
+        c.p(sx, 45, "light")
+    # Puertas abiertas con luz dorada que late.
+    dx0, dx1, dy0 = cx - 11, cx + 11, 34
+    glow = 0.5 + 0.5 * math.sin(ph)
+    for y in range(dy0, horizon):
+        for x in range(dx0, dx1 + 1):
+            t = 1 - abs(x - cx) / 12
+            col = "light" if t > 0.7 - glow * 0.15 else "gold" if t > 0.35 else "orange"
+            c.p(x, y, col)
+    c.rect(dx0 - 1, dy0 - 1, dx1 + 1, dy0 - 1, "black")
+    for x0 in (dx0 - 7, dx1 + 2):  # hojas de la puerta, abiertas
+        c.rect(x0, dy0 + 1, x0 + 5, horizon - 1, "wood2")
+        c.rect(x0 + 2, dy0 + 6, x0 + 3, dy0 + 7, "gold")
+    # Luz que sale por el suelo.
+    for y in range(horizon, c.h):
+        spread = 11 + (y - horizon) * 2.5
+        for x in range(int(cx - spread), int(cx + spread) + 1):
+            if (x + y) % 2 == 0 and abs(x - cx) < spread * (0.7 + 0.2 * glow):
+                c.p(x, y, "amber" if abs(x - cx) < spread * 0.4 else "emberDark")
+    # El guerrero (a doble tamaño), recortado contra la luz, con la capa al viento.
+    k2 = 2
+    gx = int(cx - 6 * k2 / 2) - 2
+    gy = c.h - len(WARRIOR) * k2 - 1
+    for j in range(7):
+        sway = round(math.sin(ph * 2 + j * 0.6) * 1.5)
+        c.rect(gx + 2 + sway, gy + 14 + j * 1.5, gx + 9 + sway, gy + 15 + j * 1.5, "sailDark")
+    for j, row in enumerate(WARRIOR):
+        for i, ch in enumerate(row):
+            if ch in "#*":
+                c.rect(gx + i * k2, gy + j * k2, gx + i * k2 + 1, gy + j * k2 + 1, "black" if ch == "#" else "gold")
+    # Destello de la espada.
+    if f % 8 < 3:
+        sx, sy = gx + 6 * k2, gy - 1
+        c.p(sx, sy, "white")
+        for ddx, ddy in ((1, 0), (-1, 0), (0, -1)):
+            c.p(sx + ddx, sy + ddy, "light")
+    raven(c, 40 + 8 * math.cos(ph), 20 + 3 * math.sin(ph), f)
+    raven(c, 165 + 8 * math.cos(ph + 2), 16 + 3 * math.sin(ph + 2), f + 2)
+    embers(c, f, seed=23, count=16)
+    title(c, "EINHERJAR", 2)
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -919,6 +1010,8 @@ def main() -> None:
         print(f"panel-{state}.png: {(OUT / f'panel-{state}.png').stat().st_size // 1024} KiB, {img.width}x{img.height}")
         if preview:
             img.convert("RGB").save(Path(preview) / f"panel-{state}.png")
+    hero_frames = frames(einherjar, W, 75)
+    save_gif("einherjar.gif", hero_frames, 100)
     clock_frames = frames(hourglass, CLOCK, CLOCK)
     save_gif("reloj.gif", clock_frames, 120)
     banner = rules_banner()
@@ -935,6 +1028,7 @@ def main() -> None:
             ("era", era_frames),
             ("quedada", horn_frames),
             ("reloj", clock_frames),
+            ("einherjar", hero_frames),
         ):
             imgs[0].convert("RGB").save(Path(preview) / f"{name}.png")
             imgs[FRAMES // 2].convert("RGB").save(Path(preview) / f"{name}-mitad.png")

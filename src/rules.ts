@@ -8,6 +8,7 @@
  * imagen, cabeceras (# ## ###), pasos numerados y la dirección en un bloque de código.
  */
 import { ChannelType, EmbedBuilder, type APIEmbed, type Client } from "discord.js";
+import { linkButtonRow } from "./linking.js";
 import { asset, imageFileName } from "./util/assets.js";
 import { fetchSendableChannel } from "./util/channels.js";
 import { COLORS } from "./util/embeds.js";
@@ -23,6 +24,8 @@ export interface RulesOptions {
   channelIds?: ReadonlyMap<string, string>;
   /** `attachment://…` de la imagen de portada. */
   imageUrl?: string;
+  /** Botón «Acepto las runas» (unión al reino) debajo del mensaje. */
+  linkButton?: boolean;
 }
 
 interface GuideChannel {
@@ -79,7 +82,7 @@ export function buildRulesEmbeds(options: RulesOptions): EmbedBuilder[] {
     r.joinHeading,
     r.joinIntro(options.version),
     "",
-    ...r.joinSteps(toJarl).map((step, i) => `${i + 1}. ${step}`),
+    ...r.joinSteps(toJarl, options.linkButton ?? false).map((step, i) => `${i + 1}. ${step}`),
     ...(options.address ? [r.addressHeading, "```", options.address, "```"] : []),
   ];
   embeds.push(new EmbedBuilder().setColor(COLORS.ok).setDescription(join.join("\n")).setFooter({ text: r.footer }));
@@ -97,6 +100,11 @@ function fingerprint(embeds: readonly APIEmbed[]): string {
       image: imageFileName(e.image?.url),
     })),
   );
+}
+
+/** Botones del mensaje (para saber si hay que añadir o quitar el de unirse). */
+function buttonIds(rows: readonly unknown[]): string {
+  return JSON.stringify(rows.flatMap((r) => ((r as { components?: { custom_id?: string }[] }).components ?? []).map((c) => c.custom_id ?? null)));
 }
 
 export async function publishRules(client: Client<true>, channelId: string, options: RulesOptions): Promise<void> {
@@ -119,7 +127,8 @@ export async function publishRules(client: Client<true>, channelId: string, opti
   const image = asset("runas.png", { versioned: true });
   const embeds = buildRulesEmbeds({ ...options, channelIds, ...(image ? { imageUrl: image.url } : {}) });
   // `attachments: []` al editar sustituye la imagen anterior en vez de acumularlas.
-  const payload = { embeds, files: image ? [image.file] : [], attachments: [], allowedMentions: { parse: [] } };
+  const components = options.linkButton ? [linkButtonRow()] : [];
+  const payload = { embeds, components, files: image ? [image.file] : [], attachments: [], allowedMentions: { parse: [] } };
   const recent = await channel.messages.fetch({ limit: 50 });
   // Se reconoce por el pie, común a la versión antigua y a la nueva del mensaje.
   const existing = recent.find(
@@ -129,7 +138,10 @@ export async function publishRules(client: Client<true>, channelId: string, opti
   if (!existing) {
     await channel.send(payload);
     log.info("Runas publicadas");
-  } else if (fingerprint(existing.embeds.map((e) => e.toJSON())) !== fingerprint(embeds.map((e) => e.toJSON()))) {
+  } else if (
+    fingerprint(existing.embeds.map((e) => e.toJSON())) !== fingerprint(embeds.map((e) => e.toJSON())) ||
+    buttonIds(existing.components.map((c) => c.toJSON())) !== buttonIds(components.map((c) => c.toJSON()))
+  ) {
     await existing.edit(payload);
     log.info("Runas actualizadas");
   } else {

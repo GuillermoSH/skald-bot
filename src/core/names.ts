@@ -37,6 +37,19 @@ export class NameResolver {
     return out;
   }
 
+  /** UUID de un nombre según usercache.json (el servidor lo escribe al entrar), o null. */
+  async uuidOf(name: string): Promise<string | null> {
+    await this.refreshUsercache();
+    const wanted = name.toLowerCase();
+    for (const [uuid, known] of this.known) if (known.toLowerCase() === wanted) return uuid;
+    return null;
+  }
+
+  /** Olvida la caché para releer usercache.json en la próxima consulta (alguien acaba de entrar). */
+  invalidate(): void {
+    this.usercacheAt = 0;
+  }
+
   /** Resuelve todos los que pueda; los que no, no aparecen en el mapa. */
   async resolve(uuids: readonly string[]): Promise<Map<string, string>> {
     const out = await this.peek(uuids);

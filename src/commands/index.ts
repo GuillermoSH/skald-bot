@@ -15,6 +15,7 @@ import { recordatorio } from "./recordatorio.js";
 import { saga } from "./saga.js";
 import { temporada } from "./temporada.js";
 import { tesoro } from "./tesoro.js";
+import { desvincular, vincular } from "./vincular.js";
 import type { Command } from "./types.js";
 
 export const commands: readonly Command[] = [
@@ -31,6 +32,8 @@ export const commands: readonly Command[] = [
   recordatorio,
   temporada,
   regalo,
+  vincular,
+  desvincular,
   memoria,
   runas,
   mapa,

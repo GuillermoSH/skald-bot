@@ -15,6 +15,7 @@ import { FirstsLedger } from "./core/firsts.js";
 import { migrateLegacyState } from "./core/legacy-state.js";
 import { rank, type MetricId } from "./core/metrics.js";
 import { MilestoneTracker, type CrossedMilestone } from "./core/milestones.js";
+import { Links } from "./core/links.js";
 import { Reminders } from "./core/reminders.js";
 import { Seasons, type Season } from "./core/seasons.js";
 import { WorldStats, type PlayerRecord } from "./core/stats.js";
@@ -68,6 +69,15 @@ export class Realm {
 
   get seasons(): Seasons | null {
     return this.seasonsRepo;
+  }
+
+  private linksRepo: Links | null = null;
+
+  /** Vinculaciones Discord ↔ Minecraft; null sin base de datos. */
+  get links(): Links | null {
+    if (!this.db) return null;
+    this.linksRepo ??= new Links(this.db);
+    return this.linksRepo;
   }
 
   private remindersRepo: Reminders | null = null;

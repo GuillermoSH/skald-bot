@@ -53,7 +53,14 @@ export class Herald {
   private welcomeIndex = 0;
   private farewellIndex = 0;
 
-  constructor(private readonly config: Config) {}
+  /**
+   * `roleFor` decide el rol de quien entra (p. ej. Einherjar si ya estaba unido al
+   * reino); si no se da, el automático.
+   */
+  constructor(
+    private readonly config: Config,
+    private readonly roleFor: (userId: string) => string | null = () => config.AUTO_ROLE_ID ?? null,
+  ) {}
 
   async attach(client: Client<true>): Promise<void> {
     const { HERALD_CHANNEL_ID, AUTO_ROLE_ID } = this.config;
@@ -85,14 +92,16 @@ export class Herald {
 
   private async onJoin(member: GuildMember): Promise<void> {
     if (!this.isOurs(member)) return;
-    const { AUTO_ROLE_ID, RULES_CHANNEL_ID } = this.config;
+    const { AUTO_ROLE_ID, PLAYER_ROLE_ID, RULES_CHANNEL_ID } = this.config;
+    // Lista cerrada: solo el rol automático o el de jugador, y solo se añade.
+    const picked = this.roleFor(member.id);
+    const roleId = picked === AUTO_ROLE_ID || picked === PLAYER_ROLE_ID ? picked : null;
 
     let roleName: string | null = null;
-    if (AUTO_ROLE_ID) {
-      // Lista cerrada: solo el rol configurado, y solo se añade.
+    if (roleId) {
       roleName = await member.roles
-        .add(AUTO_ROLE_ID, "Rol automático de bienvenida")
-        .then(() => member.guild.roles.cache.get(AUTO_ROLE_ID)?.name ?? null)
+        .add(roleId, "Rol automático de bienvenida")
+        .then(() => member.guild.roles.cache.get(roleId)?.name ?? null)
         .catch((error: unknown) => {
           log.warn(
             `No se pudo dar el rol automático (¿Skald está por encima del rol y tiene «Gestionar roles»?): ${error instanceof Error ? error.message : String(error)}`,
