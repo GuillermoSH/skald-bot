@@ -52,6 +52,14 @@ export const configSchema = discordSchema.extend({
   COMMAND_CHANNEL_IDS: snowflakeList,
   ADMIN_USER_IDS: snowflakeList,
 
+  // Skald en el chat del juego (tellraw y comandos con «!»). Apagado por defecto.
+  GAME_CHAT_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  // Canal donde se publican las quedadas y encuestas creadas desde el juego (si no, el primero de COMMAND_CHANNEL_IDS).
+  GAME_CHAT_CHANNEL_ID: snowflake.optional(),
+
   // Panel del reino: mensaje fijo que Skald mantiene al día (opcional).
   PANEL_CHANNEL_ID: snowflake.optional(),
 

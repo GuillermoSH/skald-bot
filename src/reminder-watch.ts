@@ -17,7 +17,10 @@ const LATE_MS = 10 * 60_000;
 /** Menciones como mucho en el aviso de una quedada. */
 const MAX_MENTIONS = 50;
 
-export function startReminderWatch(client: Client<true>, reminders: Reminders): () => void {
+/** Aviso de quedada en el chat del juego (si está activo). */
+export type GameSay = (title: string) => Promise<unknown>;
+
+export function startReminderWatch(client: Client<true>, reminders: Reminders, gameSay: GameSay | null = null): () => void {
   let busy = false;
   const check = async () => {
     if (busy) return;
@@ -25,7 +28,7 @@ export function startReminderWatch(client: Client<true>, reminders: Reminders): 
     try {
       for (const r of reminders.due()) {
         try {
-          await deliver(client, r);
+          await deliver(client, r, gameSay);
           reminders.done(r.id);
         } catch (error) {
           const reason = error instanceof Error ? error.message : String(error);
@@ -44,10 +47,11 @@ export function startReminderWatch(client: Client<true>, reminders: Reminders): 
   };
 }
 
-export async function deliver(client: Client<true>, r: Reminder): Promise<void> {
+export async function deliver(client: Client<true>, r: Reminder, gameSay: GameSay | null = null): Promise<void> {
   const late = Date.now() - r.dueAt.getTime() > LATE_MS;
   if (r.kind === "event") {
-    await deliverEventNotice(client, r);
+    const title = await deliverEventNotice(client, r);
+    if (title && gameSay) await gameSay(title);
     return;
   }
 
@@ -79,12 +83,12 @@ export async function deliver(client: Client<true>, r: Reminder): Promise<void> 
 }
 
 /** 30 min antes de una quedada: aviso en su canal mencionando a los interesados. */
-async function deliverEventNotice(client: Client<true>, r: Reminder): Promise<void> {
-  if (!r.eventId) return;
+async function deliverEventNotice(client: Client<true>, r: Reminder): Promise<string | null> {
+  if (!r.eventId) return null;
   const guild = await client.guilds.fetch(r.guildId);
   const event = await guild.scheduledEvents.fetch(r.eventId).catch(() => null);
   // Borrada, cancelada o ya empezada: no hay nada que avisar.
-  if (!event?.scheduledStartAt || event.status !== GuildScheduledEventStatus.Scheduled) return;
+  if (!event?.scheduledStartAt || event.status !== GuildScheduledEventStatus.Scheduled) return null;
   const subscribers = await event.fetchSubscribers({ limit: MAX_MENTIONS });
   const ids = [...subscribers.keys()];
   const channel = await client.channels.fetch(r.channelId);
@@ -95,4 +99,5 @@ async function deliverEventNotice(client: Client<true>, r: Reminder): Promise<vo
     event.url,
   ].join("\n");
   await channel.send({ content, allowedMentions: { users: ids } });
+  return event.name;
 }

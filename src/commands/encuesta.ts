@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SlashCommandBuilder, type SlashCommandStringOption } from "discord.js";
+import { PermissionFlagsBits, SlashCommandBuilder, type SendableChannels, type SlashCommandStringOption } from "discord.js";
 import { texts } from "../util/texts.js";
 import type { Command } from "./types.js";
 
@@ -39,16 +39,35 @@ export const encuesta: Command = {
       await interaction.editReply({ content: t.duplicated });
       return;
     }
-    await channel.send({
-      content: t.header(`<@${interaction.user.id}>`),
-      poll: {
-        question: { text: interaction.options.getString(t.question, true).trim() },
-        answers: answers.map((text) => ({ text })),
-        duration: interaction.options.getInteger(t.hours) ?? 24,
-        allowMultiselect: interaction.options.getBoolean(t.multiple) ?? false,
-      },
-      allowedMentions: { parse: [] },
+    await publishPoll(channel, {
+      header: t.header(`<@${interaction.user.id}>`),
+      question: interaction.options.getString(t.question, true).trim(),
+      answers,
+      hours: interaction.options.getInteger(t.hours) ?? 24,
+      multiple: interaction.options.getBoolean(t.multiple) ?? false,
     });
     await interaction.editReply({ content: t.done });
   },
 };
+
+export interface PollInput {
+  header: string;
+  question: string;
+  answers: string[];
+  hours: number;
+  multiple: boolean;
+}
+
+/** Publica una encuesta nativa (la usan `/encuesta` y `!encuesta`). Recorta a los límites de Discord. */
+export async function publishPoll(channel: SendableChannels, input: PollInput): Promise<void> {
+  await channel.send({
+    content: input.header,
+    poll: {
+      question: { text: input.question.slice(0, 300) },
+      answers: input.answers.slice(0, MAX_OPTIONS).map((text) => ({ text: text.slice(0, 55) })),
+      duration: Math.min(168, Math.max(1, Math.round(input.hours))),
+      allowMultiselect: input.multiple,
+    },
+    allowedMentions: { parse: [] },
+  });
+}

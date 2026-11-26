@@ -28,7 +28,9 @@ import { RconParseError } from "./core/parsers.js";
 import { RconClient, RconUnavailableError } from "./core/rcon.js";
 import { Herald, heraldNeedsMembers } from "./herald.js";
 import { Realm } from "./realm.js";
+import { GameChat } from "./ingame.js";
 import { startPanel } from "./panel.js";
+import { gameLine } from "./util/game.js";
 import { startReminderWatch } from "./reminder-watch.js";
 import { Linking, LINK_PREFIX } from "./linking.js";
 import { MojangClient } from "./core/mojang.js";
@@ -96,6 +98,7 @@ function main(): void {
   };
 
   let alerts: AlertQueue | null = null;
+  let gameChat: GameChat | null = null;
   const watcher = new LogWatcher(config.DATA_DIR, ctx.lang, (event, live) => {
     if (live && event.type === "advancement" && event.key && realm.claimFirst(event.key, event.player, event.at)) {
       event = { ...event, first: true };
@@ -103,6 +106,12 @@ function main(): void {
     }
     ctx.chronicle.add(event);
     if (live) alerts?.push(event);
+    // Comandos con «!» desde el chat del juego.
+    if (live && event.type === "chat" && gameChat) {
+      void gameChat.onChat(event.player, event.message).catch((error: unknown) => {
+        log.warn(`Chat del juego (${event.player}): ${error instanceof Error ? error.message : String(error)}`);
+      });
+    }
     // Primer login de alguien unido al reino: pasa a Einherjar.
     if (live && event.type === "join" && ctx.linking && client.isReady()) {
       const ready = client;
@@ -232,7 +241,17 @@ function main(): void {
     realmTimer = setInterval(() => void realmTick(), REALM_TICK_MS);
     // Recordatorios y avisos de quedadas (necesitan la base de datos).
     const reminders = realm.reminders;
-    if (reminders) stopReminders = startReminderWatch(ready, reminders);
+    if (reminders) {
+      // Aviso de quedada también en el chat del juego (si está activo).
+      const gameSay = config.GAME_CHAT_ENABLED
+        ? (title: string) => ctx.rcon.tellraw("@a", gameLine(texts.game.quedadaSoon(title))).catch(() => undefined)
+        : null;
+      stopReminders = startReminderWatch(ready, reminders, gameSay);
+    }
+    if (config.GAME_CHAT_ENABLED) {
+      gameChat = new GameChat(ctx, ready);
+      log.info("Skald escucha el chat del juego (comandos con «!»)");
+    }
     // Panel del reino (después de la temporada, para enseñar la era).
     if (config.PANEL_CHANNEL_ID) stopPanel = await startPanel(ready, ctx, config.PANEL_CHANNEL_ID);
     try {

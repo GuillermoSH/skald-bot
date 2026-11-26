@@ -7,9 +7,60 @@ import { parseList, parseTickQuery, parseVersion, type PlayerList, type TickInfo
  * Es un tipo literal y `send` no se exporta: no hay forma de mandar un texto
  * arbitrario (por ejemplo, algo escrito en Discord) al servidor. Para añadir
  * un comando hay que añadirlo aquí y escribir su función.
+ *
+ * La única excepción es `tellraw`, con una plantilla cerrada (`buildTellraw`):
+ * el destino es `@a` o un nombre válido, y el texto va siempre dentro de un
+ * componente JSON generado con JSON.stringify (el servidor rechaza cualquier
+ * cosa que vaya detrás, así que no se puede colar otro comando).
  */
 const ALLOWED_COMMANDS = ["list", "tick query", "version"] as const;
 type AllowedCommand = (typeof ALLOWED_COMMANDS)[number];
+
+// ---- tellraw (plantilla cerrada)
+
+export type TextColor = "gold" | "yellow" | "gray" | "dark_gray" | "white" | "red" | "green" | "aqua";
+
+export interface TextPart {
+  text: string;
+  color?: TextColor;
+  bold?: boolean;
+  italic?: boolean;
+  /** Texto al pasar el ratón. */
+  hover?: string;
+  /** Enlace al hacer clic (solo https). */
+  url?: string;
+}
+
+const PLAYER_RE = /^[A-Za-z0-9_]{3,16}$/;
+/** RCON admite paquetes de ~1446 bytes; con margen. */
+const MAX_COMMAND_BYTES = 1300;
+
+/** Sin caracteres de control ni códigos de formato de Minecraft (§). */
+function cleanText(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/[\u0000-\u001f\u007f§]/g, " ");
+}
+
+/** Construye el comando `tellraw` (lanza si el destino no es válido). */
+export function buildTellraw(target: string, parts: readonly TextPart[]): string {
+  if (target !== "@a" && !PLAYER_RE.test(target)) throw new Error("Destino de tellraw no válido");
+  let budget = 600; // caracteres de texto como mucho
+  const components = parts.map((p) => {
+    const text = cleanText(p.text).slice(0, Math.max(0, budget));
+    budget -= text.length;
+    return {
+      text,
+      ...(p.color ? { color: p.color } : {}),
+      ...(p.bold ? { bold: true } : {}),
+      ...(p.italic ? { italic: true } : {}),
+      ...(p.hover ? { hover_event: { action: "show_text", value: cleanText(p.hover).slice(0, 200) } } : {}),
+      ...(p.url && /^https:\/\/[^\s"]+$/.test(p.url) ? { click_event: { action: "open_url", url: p.url } } : {}),
+    };
+  });
+  const command = `tellraw ${target} ${JSON.stringify(["", ...components])}`;
+  if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) throw new Error("Mensaje de tellraw demasiado largo");
+  return command;
+}
 
 export interface RconSettings {
   host: string;
@@ -41,6 +92,11 @@ export class RconClient {
     return parseVersion(version);
   }
 
+  /** Mensaje en el chat del juego (a todos o a un jugador), con la plantilla cerrada. */
+  async tellraw(target: "@a" | (string & {}), parts: readonly TextPart[]): Promise<void> {
+    await this.exec([buildTellraw(target, parts)]);
+  }
+
   /**
    * Abre una conexión, envía los comandos en orden y la cierra. Una conexión
    * por petición: más simple y aguanta reinicios del servidor sin estado raro.
@@ -54,7 +110,11 @@ export class RconClient {
         throw new Error(`Comando RCON no permitido: ${command}`);
       }
     }
+    return (await this.exec(commands)) as { [K in keyof C]: string };
+  }
 
+  /** Solo la llaman `send` (lista cerrada) y `tellraw` (plantilla cerrada). */
+  private async exec(commands: readonly string[]): Promise<string[]> {
     const { host, port, password, timeoutMs } = this.settings;
     let rcon: Rcon;
     try {
@@ -68,7 +128,7 @@ export class RconClient {
       for (const command of commands) {
         responses.push(await withTimeout(rcon.send(command), timeoutMs));
       }
-      return responses as { [K in keyof C]: string };
+      return responses;
     } catch (error) {
       throw new RconUnavailableError("El servidor dejó de responder por RCON", { cause: error });
     } finally {

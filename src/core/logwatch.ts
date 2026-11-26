@@ -41,6 +41,8 @@ export type LogEvent =
       /** Nadie en el reino lo tenía antes (lo decide quien recibe el evento). */
       first?: boolean;
     }
+  /** Mensaje de chat de un jugador (`<Nombre> texto`, con o sin «[Not Secure]»). */
+  | { type: "chat"; at: Date; player: string; message: string }
   | { type: "server_start"; at: Date }
   | { type: "server_stop"; at: Date };
 
@@ -51,6 +53,8 @@ const NAME = "[A-Za-z0-9_]{3,16}";
 const JOIN_RE = new RegExp(`^(${NAME})(?: \\(formerly known as ${NAME}\\))? joined the game$`);
 const LEAVE_RE = new RegExp(`^(${NAME}) left the game$`);
 const ADVANCEMENT_RE = new RegExp(`^(${NAME}) has (made the advancement|completed the challenge|reached the goal) \\[(.+)\\]$`);
+// Verificado en el log de 26.2: en «Server thread», a veces con «[Not Secure]» delante.
+const CHAT_RE = new RegExp(`^(?:\\[Not Secure\\] )?<(${NAME})> (.*)$`);
 const START_RE = /^Done \([\d.,]+s\)! For help/;
 const STOP_RE = /^Stopping (?:the )?server$/;
 const FALLBACK_DEATH_RE = new RegExp(`^(${NAME}) (.+)$`);
@@ -81,10 +85,13 @@ export class LogParser {
     const message = m[4] ?? "";
     const at = logTimeToDate(now, Number(m[1]), Number(m[2]), Number(m[3]));
 
-    // Chat, salida de comandos y líneas con IP: nunca.
-    if (message.startsWith("<") || message.startsWith("[") || message.includes("[/")) return null;
-
     let r: RegExpExecArray | null;
+    // El chat primero: lo que escribe un jugador nunca debe tomarse por otra cosa.
+    if ((r = CHAT_RE.exec(message))) {
+      return { type: "chat", at, player: r[1] ?? "", message: r[2] ?? "" };
+    }
+    // Otras líneas con «<», salida de comandos y líneas con IP: nunca.
+    if (message.startsWith("<") || message.startsWith("[") || message.includes("[/")) return null;
     if ((r = JOIN_RE.exec(message))) {
       const player = r[1] ?? "";
       this.online.add(player);

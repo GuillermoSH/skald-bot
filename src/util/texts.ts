@@ -236,6 +236,40 @@ export const texts = {
     changed: "Último cambio",
   },
 
+  // Skald en el chat del juego (texto plano: sin Markdown de Discord)
+  game: {
+    prefix: "[Skald] ",
+    link: "[abrir en Discord]",
+    newQuedada: (title: string, when: string) => `Nueva quedada: ${title} (${when}). Pulsa «Interesado» en Discord para que te avise.`,
+    quedadaSoon: (title: string) => `La quedada «${title}» empieza en 30 minutos. ¡Al salón, guerreros!`,
+    help: [
+      "Comandos de Skald en el juego:",
+      "!recordar <cuándo> | <texto> — te lo recuerdo por Discord (ej.: !recordar 2h | regar los cultivos)",
+      "!quedada <cuándo> | <título> — crea un evento en Discord (ej.: !quedada 24/12 21:30 | Asalto al Nether)",
+      "!encuesta <pregunta> | <opción> | <opción>… — encuesta en Discord",
+      "!tesoro — tus monedas de plata",
+    ],
+    notLinked: "Primero únete al reino en Discord: pulsa «Acepto las runas» en #runas.",
+    unknown: (cmd: string) => `No conozco «!${cmd}». Escribe !ayuda.`,
+    slowDown: "Despacio, guerrero: un comando cada pocos segundos.",
+    tooMany: "Ya has creado bastantes cosas esta hora. Inténtalo más tarde.",
+    reminderUsage: "Uso: !recordar <cuándo> | <texto>   (cuándo: 30m, 2h, mañana 18:00, 24/12 21:30)",
+    reminderSaved: (when: string) => `Hecho: te lo recordaré por Discord el ${when}.`,
+    quedadaUsage: "Uso: !quedada <cuándo> | <título>   (ej.: !quedada 24/12 21:30 | Asalto al Nether)",
+    quedadaDone: (title: string) => `Quedada «${title}» creada en Discord.`,
+    pollUsage: "Uso: !encuesta <pregunta> | <opción> | <opción> (de 2 a 8 opciones)",
+    pollDone: "Encuesta publicada en Discord.",
+    badDate: "No entiendo cuándo. Prueba 30m, 2h, mañana 18:00 o 24/12 21:30.",
+    pastDate: "Esa hora ya ha pasado (o es demasiado pronto).",
+    farDate: "Como mucho, con un año de antelación.",
+    tooManyReminders: "Tienes demasiados recordatorios pendientes.",
+    balance: (coins: string) => `Tienes ${coins} monedas de plata.`,
+    noEconomy: "La economía del reino aún no está abierta.",
+    discordDown: "No llego a Discord ahora mismo. Inténtalo en un rato.",
+    // Cabeceras en Discord de lo creado desde el juego.
+    fromGame: (user: string) => `🎮 Desde el juego, por ${user}`,
+  },
+
   // Vinculación Discord ↔ Minecraft (botón de las runas, /vincular, /desvincular)
   link: {
     button: "Acepto las runas",

@@ -32,11 +32,13 @@ const DEFAULTS: AlertQueueOptions = {
   maxPending: 50,
 };
 
-export function alertTypeOf(event: LogEvent): AlertEventType {
+export function alertTypeOf(event: LogEvent): AlertEventType | null {
   switch (event.type) {
     case "server_start":
     case "server_stop":
       return "server";
+    case "chat":
+      return null; // el chat no se avisa
     default:
       return event.type;
   }
@@ -59,6 +61,8 @@ export class AlertFormatter {
         return t.serverStart;
       case "server_stop":
         return t.serverStop;
+      case "chat":
+        return ""; // nunca se avisa (alertTypeOf lo descarta)
       case "advancement":
         if (event.first) return `${t.first[event.kind](bold(event.player), safeText(event.title, 100))}\n${t.firstNote}`;
         return t.advancement[event.kind](bold(event.player), safeText(event.title, 100));
@@ -202,7 +206,8 @@ export class AlertQueue {
   }
 
   private dispatch(event: LogEvent): void {
-    if (this.routes.has(alertTypeOf(event))) this.send(alertTypeOf(event), this.formatter.format(event));
+    const type = alertTypeOf(event);
+    if (type && this.routes.has(type)) this.send(type, this.formatter.format(event));
   }
 
   private send(type: AlertEventType, line: string): void {

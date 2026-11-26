@@ -13,7 +13,8 @@ describe("LogParser", () => {
   it("saca del log de ejemplo solo los eventos que importan", async () => {
     const parser = new LogParser(await fixtureTranslator());
     const lines = (await readFile(path.join(FIXTURE_DATA, "logs", "latest.log"), "utf8")).split("\n");
-    const events = lines.map((l) => strip(parser.parse(l, NOW))).filter((e) => e !== null);
+    // El chat sale como evento propio (no se avisa ni va a la crónica): aquí no interesa.
+    const events = lines.map((l) => strip(parser.parse(l, NOW))).filter((e) => e !== null && e.type !== "chat");
     expect(events).toEqual([
       { type: "server_start", at: undefined },
       { type: "join", at: undefined, player: "Ragnar" },
@@ -48,9 +49,9 @@ describe("LogParser", () => {
     ]);
   });
 
-  it("ignora chat, comandos de RCON y líneas con IP", async () => {
+  it("el chat es chat (nunca una muerte); ignora comandos de RCON y líneas con IP", async () => {
     const parser = new LogParser(await fixtureTranslator());
-    expect(parser.parse("[10:02:00] [Server thread/INFO]: <Ragnar> Ragnar was blown up by Creeper", NOW)).toBeNull();
+    expect(parser.parse("[10:02:00] [Server thread/INFO]: <Ragnar> Ragnar was blown up by Creeper", NOW)?.type).toBe("chat");
     expect(parser.parse("[10:05:00] [Server thread/INFO]: [Rcon: Ragnar drowned]", NOW)).toBeNull();
     expect(parser.parse("[10:01:00] [Server thread/INFO]: Ragnar[/192.0.2.10:5] logged in with entity id 1", NOW)).toBeNull();
     expect(parser.parse("[10:01:00] [User Authenticator #1/INFO]: UUID of player Ragnar is x", NOW)).toBeNull();
