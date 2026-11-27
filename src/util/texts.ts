@@ -6,6 +6,7 @@ import type { AdvancementKind } from "../core/logwatch.js";
 import type { BackupStatus } from "../core/backups.js";
 import type { DayPeriod } from "../core/sky.js";
 import type { TaskTier } from "../core/tasks.js";
+import type { LootGroupId } from "../core/loot.js";
 import type { EarnCategory } from "../core/economy.js";
 import type { MetricId } from "../core/metrics.js";
 import type { MilestoneId } from "../core/milestones.js";
@@ -127,14 +128,49 @@ export const texts = {
 
   // Tareas diarias (/tareas y !tareas). {n} = objetivo.
   tareas: {
-    title: "📋 Las misiones del día",
+    title: "📋 Tus misiones del día",
+    rerollOption: "cambiar",
+    rerollOptionDescription: "Cambia una misión (1, 2 o 3) por otra de la misma dificultad: 20 monedas, una vez al día",
+    rerolled: (old: string, task: string) => `🔄 Cambiada: ~~${old}~~ → **${task}** (−20 monedas).`,
+    rerollFail: {
+      bad_slot: "Elige la misión 1, 2 o 3.",
+      done: "Esa ya la has cumplido.",
+      used: "Ya has cambiado una misión hoy.",
+      poor: "No te alcanza: cambiar una misión cuesta 20 monedas.",
+      none: "No hay otra misión de esa dificultad para ti ahora mismo.",
+      economy_off: "Sin economía no se pueden cambiar misiones.",
+    } satisfies Record<string, string>,
+    rerollHint: "-# ¿No te gusta una? `/tareas cambiar:2` la cambia por 20 monedas (una vez al día).",
+    weeklyHeading: "### 🛡️ Misión del reino (esta semana)",
+    weeklyNames: {
+      kill_mobs: (n: string) => `El reino abate ${n} enemigos`,
+      mine_blocks: (n: string) => `El reino pica ${n} bloques`,
+      travel: (n: string) => `El reino recorre ${n} km`,
+      fish: (n: string) => `El reino pesca ${n} peces`,
+      trade: (n: string) => `El reino cierra ${n} tratos con aldeanos`,
+      chop_logs: (n: string) => `El reino tala ${n} troncos`,
+      kill_blazes: (n: string) => `El reino abate ${n} blazes`,
+      mine_quartz: (n: string) => `El reino pica ${n} menas de cuarzo`,
+    } as Record<string, (n: string) => string>,
+    weeklyProgress: (bar: string, now: string, target: string) => `${bar} ${now} / ${target}`,
+    weeklyYours: (n: string) => `Tu aporte: ${n}`,
+    weeklyDone: "✅ ¡Cumplida! Todos los que aportaron recibieron 100 monedas.",
+    weeklyReward: "-# Si se cumple antes del domingo, 100 monedas para cada guerrero que haya aportado.",
+    weeklyAnnounce: (name: string, n: number) => `🛡️ **¡Misión del reino cumplida!** ${name}. ${n} ${n === 1 ? "guerrero recibe" : "guerreros reciben"} 100 monedas de plata.`,
     names: {
       kill_mobs_easy: (n: string) => `Abate ${n} enemigos`,
       mine_blocks_easy: (n: string) => `Pica ${n} bloques`,
       travel_easy: (n: string) => `Recorre ${n} km`,
       fish_easy: (n: string) => `Pesca ${n} peces`,
-      sleep: () => "Duerme en una cama",
       breed_easy: (n: string) => `Cría ${n} animales`,
+      kill_spiders: (n: string) => `Abate ${n} arañas`,
+      kill_zombified_piglins: (n: string) => `Abate ${n} piglins zombificados`,
+      kill_blazes: (n: string) => `Abate ${n} blazes`,
+      mine_quartz: (n: string) => `Pica ${n} menas de cuarzo del Nether`,
+      mine_end_stone: (n: string) => `Pica ${n} bloques de piedra del End`,
+      mine_ancient_debris: (n: string) => `Pica ${n} escombros ancestrales`,
+      kill_wither_skeletons: (n: string) => `Abate ${n} esqueletos wither`,
+      kill_shulkers: (n: string) => `Abate ${n} shulkers`,
       kill_zombies: (n: string) => `Abate ${n} zombis`,
       kill_skeletons: (n: string) => `Abate ${n} esqueletos`,
       chop_logs: (n: string) => `Tala ${n} troncos`,
@@ -160,9 +196,44 @@ export const texts = {
     resets: (when: string) => `-# Las misiones cambian ${when}.`,
     unavailable: "Las misiones del día no están disponibles ahora mismo.",
     // En el juego (texto plano)
-    gameTitle: "Misiones de hoy:",
+    gameTitle: "Tus misiones de hoy (!tareas cambiar N: 20 monedas):",
+    gameWeekly: (name: string, now: string, target: string) => `Reino: ${name} (${now}/${target})`,
+    gameWeeklyDone: "¡Misión del reino cumplida! +100 monedas para todos los que aportaron.",
+    gameRerolled: (task: string) => `Misión cambiada: ${task} (-20 monedas).`,
     gameDone: (name: string, coins: string) => `Misión cumplida: ${name} (+${coins} monedas)`,
     gameStreak: (days: number, bonus: string) => `¡Las tres de hoy! Racha de ${days} ${days === 1 ? "día" : "días"} (+${bonus} monedas)`,
+  },
+
+  // Ruleta (la rueda de las nornas). El resultado solo lo ve quien tira.
+  ruleta: {
+    title: "🎡 La rueda de las nornas",
+    groups: {
+      nothing: "💨",
+      refund: "🪙",
+      survival: "🎒 Suministros",
+      minerals: "⛏️ Minerales",
+      rare: "✨ Raro",
+      valuable: "💎 Valioso",
+      books: "📕 Libro encantado",
+      jackpot: "🏆 ¡BOTE!",
+    } satisfies Record<LootGroupId, string>,
+    nothing: "La rueda se detiene en vacío. Las nornas se ríen de ti.",
+    refund: (n: string) => `Recuperas ${n} monedas.`,
+    jackpot: (n: string) => `¡${n} monedas de plata!`,
+    item: (count: string, name: string) => `${count} × ${name}`,
+    book: (enchants: string) => `Libro de ${enchants}`,
+    after: (balance: string, left: number) => `-# Te quedan 🪙 ${balance} y ${left} ${left === 1 ? "tirada" : "tiradas"} hoy. Cada tirada: 100 monedas.`,
+    economyOff: "La rueda está quieta: la economía del reino no está abierta.",
+    notLinked: "Primero únete al reino (botón «Acepto las runas» en #runas).",
+    offline: "Tienes que estar conectado al reino para girar la rueda (el premio te llega al momento).",
+    poor: (balance: string) => `No te alcanza: cada tirada cuesta 🪙 100 y tienes ${balance}.`,
+    limit: "Ya has girado la rueda 5 veces hoy. Las nornas descansan hasta mañana.",
+    busy: "La rueda aún está girando…",
+    giveFailed: "No pude entregarte el premio (¿te has desconectado?). Te devuelvo las monedas.",
+    // Registro de administración
+    record: (player: string, prize: string) => `🎡 Ruleta: **${player}** se lleva ${prize}.`,
+    // En el juego (texto plano)
+    gameAfter: (balance: string, left: number) => `Te quedan ${balance} monedas y ${left} tiradas hoy.`,
   },
 
   // Canto del domingo (resumen semanal en el canal de los logros)
@@ -255,6 +326,7 @@ export const texts = {
     historyTitle: "📜 Las eras del reino",
     historyLine: (name: string, from: string, to: string | null) => `### ${name}\n${from} → ${to ?? "hoy"}`,
     champion: (label: string, name: string, value: string) => `${label}: **${name}** (${value})`,
+    richest: "🪙 El más rico",
     noHistory: "Solo existe la era actual. La historia acaba de empezar.",
     onlyJarl: "Solo el Jarl puede abrir una era nueva.",
     opened: (closed: string | null, opened: string) =>
@@ -297,7 +369,7 @@ export const texts = {
     empty: "Los cofres del reino siguen vacíos. Las monedas se ganan jugando.",
     yours: (name: string, coins: string, rank: number | null) =>
       `**Tu cofre** (${name}): 🪙 ${coins}${rank ? ` · puesto **#${rank}**` : ""}`,
-    note: "-# Se gana jugando: Skald hace cuentas cada ~5 min. El tiempo quieto (AFK) no cuenta.",
+    note: "-# Se gana jugando: Skald hace cuentas cada ~5 min. El tiempo quieto (AFK) no cuenta. Cada era empieza de cero.",
     disabled: "La economía del reino aún no está abierta.",
   },
 
@@ -373,15 +445,15 @@ export const texts = {
     newQuedada: (title: string, when: string) => `Nueva quedada: ${title} (${when}). Pulsa «Interesado» en Discord para que te avise.`,
     quedadaSoon: (title: string) => `La quedada «${title}» empieza en 30 minutos. ¡Al salón, guerreros!`,
     // !ayuda: un solo mensaje; cada comando se puede pulsar y enseña su uso al pasar el ratón.
-    helpTitle: "Lo que sé hacer en el juego:",
-    helpFooter: "Ratón: ejemplo. Clic: escribirlo.",
+    helpTitle: "Comandos de Skald:",
     helpItems: [
-      { cmd: "!recordar", desc: "te lo recuerdo en Discord", usage: "!recordar 2h | regar\n(30m, 2h, mañana 18:00, 24/12 21:30)" },
+      { cmd: "!recordar", desc: "aviso en Discord", usage: "!recordar 2h | regar\n(30m, 2h, mañana 18:00, 24/12 21:30)" },
       { cmd: "!quedada", desc: "evento en Discord", usage: "!quedada 24/12 21:30 | Asalto al Nether" },
-      { cmd: "!encuesta", desc: "encuesta en Discord", usage: "!encuesta ¿Nether o End? | Nether | End" },
-      { cmd: "!tesoro", desc: "tus monedas de plata", usage: "!tesoro" },
+      { cmd: "!encuesta", desc: "encuesta", usage: "!encuesta ¿Nether o End? | Nether | End" },
+      { cmd: "!tesoro", desc: "tus monedas", usage: "!tesoro" },
       { cmd: "!cielo", desc: "hora, luna y clima", usage: "!cielo" },
-      { cmd: "!tareas", desc: "misiones del día", usage: "!tareas" },
+      { cmd: "!tareas", desc: "tus misiones", usage: "!tareas" },
+      { cmd: "!ruleta", desc: "gira la rueda (100)", usage: "!ruleta" },
     ],
     // !cielo (texto plano para el chat del juego)
     skyPeriod: { dawn: "Amanecer", day: "Día", dusk: "Atardecer", night: "Noche" } satisfies Record<DayPeriod, string>,

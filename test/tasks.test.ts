@@ -1,77 +1,117 @@
 import { describe, expect, it } from "vitest";
-import { DailyTasks, streakBonus, TASK_REWARD, tasksForDay } from "../src/core/tasks.js";
+import { Economy } from "../src/core/economy.js";
 import type { PlayerRecord } from "../src/core/stats.js";
+import { DailyTasks, REROLL_COST, streakBonus, TASK_REWARD, TASKS, WEEKLY_REWARD, WeeklyMission, weekOf } from "../src/core/tasks.js";
 import { memoryRealm } from "./helpers.js";
 
-/** Jugador con todas las estadísticas que usan las misiones a `n` (y las de distancia en cm). */
-function player(uuid: string, n: number): PlayerRecord {
-  const custom = {
-    "minecraft:mob_kills": n,
-    "minecraft:fish_caught": n,
-    "minecraft:sleep_in_bed": n,
-    "minecraft:animals_bred": n,
-    "minecraft:traded_with_villager": n,
-    "minecraft:walk_one_cm": n * 100_000,
-  };
-  const mobs = ["zombie", "skeleton", "creeper", "enderman"];
-  const blocks = ["stone", "oak_log", "iron_ore", "diamond_ore"];
+const NETHER = "minecraft:story/enter_the_nether";
+
+/** Jugador con todas las estadísticas que usan las misiones a `n`. */
+function player(uuid: string, n: number, opts: { nether?: boolean; savedAt?: Date } = {}): PlayerRecord {
+  const mobs = ["zombie", "skeleton", "creeper", "enderman", "spider", "zombified_piglin", "blaze", "wither_skeleton", "shulker"];
+  const blocks = ["stone", "oak_log", "iron_ore", "diamond_ore", "nether_quartz_ore", "ancient_debris", "end_stone"];
   return {
     uuid,
     stats: {
-      "minecraft:custom": custom,
+      "minecraft:custom": {
+        "minecraft:mob_kills": n,
+        "minecraft:fish_caught": n,
+        "minecraft:animals_bred": n,
+        "minecraft:traded_with_villager": n,
+        "minecraft:walk_one_cm": n * 100_000,
+      },
       "minecraft:killed": Object.fromEntries(mobs.map((m) => [`minecraft:${m}`, n])),
       "minecraft:mined": Object.fromEntries(blocks.map((b) => [`minecraft:${b}`, n])),
     },
-    advancements: [],
+    advancements: opts.nether ? [{ id: NETHER, doneAt: new Date() }] : [],
+    savedAt: opts.savedAt ?? new Date(),
   };
-}
-
-function setup() {
-  const paid: { uuid: string; amount: number; reason: string }[] = [];
-  const tasks = new DailyTasks(memoryRealm().db, "UTC", (uuid, amount, reason) => paid.push({ uuid, amount, reason }));
-  return { tasks, paid };
 }
 
 const DAY1 = new Date("2026-12-01T10:00:00Z");
 const at = (base: Date, h: number) => new Date(base.getTime() + h * 3_600_000);
 
-describe("tareas diarias", () => {
-  it("tres al día, una de cada dificultad, iguales para todos y estables", () => {
-    const a = tasksForDay("2026-12-01");
-    expect(a.map((t) => t.tier)).toEqual(["easy", "medium", "hard"]);
-    expect(tasksForDay("2026-12-01").map((t) => t.id)).toEqual(a.map((t) => t.id));
-    const days = Array.from({ length: 10 }, (_, i) => tasksForDay(`2026-12-${String(i + 1).padStart(2, "0")}`).map((t) => t.id).join());
-    expect(new Set(days).size).toBeGreaterThan(1);
+/** Un rng que va dando los valores de la lista (y luego 0). */
+const seq = (...values: number[]) => (max: number) => (values.shift() ?? 0) % max;
+
+function setup(rng = seq()) {
+  const { db, seasonId } = memoryRealm();
+  const economy = new Economy(db, seasonId, "UTC");
+  return { economy, tasks: new DailyTasks(db, "UTC", economy, rng), weekly: new WeeklyMission(db, "UTC", economy, seq()) };
+}
+
+describe("misiones diarias individuales", () => {
+  it("tres por jugador (una de cada dificultad), guardadas para el día", () => {
+    const { tasks } = setup(seq(1, 2, 3, 0, 0, 0));
+    const a = tasks.progressFor(player("a", 0), DAY1);
+    expect(a.map((p) => p.task.tier)).toEqual(["easy", "medium", "hard"]);
+    const b = tasks.progressFor(player("b", 0), DAY1);
+    expect(b.map((p) => p.task.id)).not.toEqual(a.map((p) => p.task.id));
+    expect(tasks.progressFor(player("a", 5), at(DAY1, 2)).map((p) => p.task.id)).toEqual(a.map((p) => p.task.id));
   });
 
-  it("lo de antes de empezar el día no cuenta; cumplir paga una vez", () => {
-    const { tasks, paid } = setup();
-    expect(tasks.tick([player("a", 1000)], DAY1)).toEqual([]); // punto de partida
-    const events = tasks.tick([player("a", 1600)], at(DAY1, 1)); // +600 de todo: cumple las tres
-    expect(events.map((e) => e.task.tier)).toEqual(["easy", "medium", "hard"]);
+  it("las del Nether solo a quien ha entrado en el Nether", () => {
+    const netherIds = new Set(TASKS.filter((t) => t.requires === "nether").map((t) => t.id));
+    for (let i = 0; i < 20; i++) {
+      const { tasks } = setup(seq(i, i, i));
+      expect(tasks.progressFor(player("a", 0), DAY1).some((p) => netherIds.has(p.task.id))).toBe(false);
+    }
+  });
+
+  it("cumplir paga una vez, y las tres suman racha", () => {
+    const { tasks, economy } = setup();
+    tasks.tick([player("a", 1000)], DAY1);
+    const events = tasks.tick([player("a", 3000)], at(DAY1, 1));
     expect(events.map((e) => e.coins)).toEqual([TASK_REWARD.easy, TASK_REWARD.medium, TASK_REWARD.hard]);
     expect(events[2]?.streak).toEqual({ days: 1, bonus: streakBonus(1) });
-    expect(tasks.tick([player("a", 2000)], at(DAY1, 2))).toEqual([]);
-    expect(paid.reduce((n, p) => n + p.amount, 0)).toBe(15 + 30 + 50 + 10);
+    expect(tasks.tick([player("a", 4000)], at(DAY1, 2))).toEqual([]);
+    expect(economy.balance("a")).toBe(15 + 30 + 50 + 10);
   });
 
   it("la racha sigue al día siguiente y se rompe si se salta uno", () => {
     const { tasks } = setup();
     const play = (day: Date, start: number) => {
       tasks.tick([player("a", start)], day);
-      return tasks.tick([player("a", start + 600)], at(day, 1));
+      return tasks.tick([player("a", start + 3000)], at(day, 1));
     };
     expect(play(DAY1, 0).at(-1)?.streak?.days).toBe(1);
-    expect(play(at(DAY1, 24), 600).at(-1)?.streak?.days).toBe(2);
-    expect(play(at(DAY1, 72), 1200).at(-1)?.streak?.days).toBe(1);
+    expect(play(at(DAY1, 24), 3000).at(-1)?.streak?.days).toBe(2);
+    expect(play(at(DAY1, 72), 6000).at(-1)?.streak?.days).toBe(1);
     expect(tasks.streakOf("a")).toMatchObject({ current: 1, best: 2 });
   });
 
-  it("progreso para /tareas", () => {
-    const { tasks } = setup();
-    tasks.tick([player("a", 0)], DAY1);
-    const progress = tasks.progressFor(player("a", 2), at(DAY1, 1));
-    expect(progress).toHaveLength(3);
-    expect(progress.every((p) => !p.done && p.progress >= 0)).toBe(true);
+  it("cambiar una misión: 20 monedas, una vez al día, no las cumplidas", () => {
+    const { tasks, economy } = setup();
+    const p = player("a", 0);
+    expect(tasks.reroll(p, 1, DAY1)).toEqual({ ok: false, reason: "poor" });
+    economy.credit("a", 50, "test", "2026-12-01");
+    const before = tasks.progressFor(p, DAY1)[0]?.task.id;
+    const r = tasks.reroll(p, 1, DAY1);
+    expect(r.ok).toBe(true);
+    expect(tasks.progressFor(p, DAY1)[0]?.task.id).not.toBe(before);
+    expect(economy.balance("a")).toBe(50 - REROLL_COST);
+    expect(tasks.reroll(p, 2, DAY1)).toEqual({ ok: false, reason: "used" });
+    expect(tasks.reroll(p, 4, at(DAY1, 24))).toEqual({ ok: false, reason: "bad_slot" });
+  });
+});
+
+describe("misión semanal del reino", () => {
+  it("suma lo de todos y paga lo mismo a cada uno que aportó (una vez)", () => {
+    const { weekly, economy } = setup();
+    const t0 = new Date("2026-11-30T10:00:00Z"); // lunes
+    weekly.tick([player("a", 0), player("b", 0), player("c", 0)], t0);
+    const target = weekly.status([player("a", 0)], t0).mission.target;
+    const half = Math.ceil(target / 2);
+    expect(weekly.tick([player("a", half), player("b", 0), player("c", 0)], at(t0, 1))).toBeNull();
+    const done = weekly.tick([player("a", half), player("b", half), player("c", 0)], at(t0, 2));
+    expect(done?.contributors.sort()).toEqual(["a", "b"]);
+    expect(economy.balance("a")).toBe(WEEKLY_REWARD);
+    expect(economy.balance("c")).toBe(0);
+    expect(weekly.tick([player("a", target * 3), player("b", half)], at(t0, 3))).toBeNull();
+  });
+
+  it("la semana va de lunes a domingo", () => {
+    expect(weekOf("2026-12-06")).toBe("2026-11-30"); // domingo
+    expect(weekOf("2026-11-30")).toBe("2026-11-30"); // lunes
   });
 });

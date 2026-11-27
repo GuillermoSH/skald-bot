@@ -2,8 +2,9 @@
  * Economía (base): monedas que se ganan solas jugando, calculadas por diferencia
  * entre lo que dicen ahora las estadísticas del mundo y lo ya contado.
  *
- * - Las monedas son de la persona (UUID de Minecraft), no de la temporada: el
- *   saldo suma todo el libro. Cada movimiento guarda su temporada de origen.
+ * - Las monedas son por persona (UUID de Minecraft) y por era: cada mundo nuevo empieza
+ *   de cero (decisión de Guillermo, 2026-11-27). El libro guarda la era de cada
+ *   movimiento, así que los saldos de las eras pasadas quedan guardados.
  * - El libro (`ledger`) solo crece: nunca se edita ni se borra un movimiento.
  * - La primera vez que se ve a un jugador en una temporada solo se apunta la línea
  *   base: lo jugado antes no se paga (el regalo inicial, si llega, irá aparte).
@@ -77,6 +78,15 @@ export interface Earning {
 /** "2026-11-25" en la zona horaria dada. */
 export function dayIn(timeZone: string, at: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+}
+
+/** Los más ricos de una era (también para el ranking final al cerrarla). */
+export function topBalances(db: Database, seasonId: number, limit: number): { uuid: string; balance: number }[] {
+  return db.all<{ uuid: string; balance: number }>(
+    "SELECT uuid, SUM(amount) AS balance FROM ledger WHERE season_id = ? GROUP BY uuid HAVING balance > 0 ORDER BY balance DESC LIMIT ?",
+    seasonId,
+    limit,
+  );
 }
 
 export class Economy {
@@ -176,6 +186,29 @@ export class Economy {
     );
   }
 
+  /** Apunta un gasto (negativo en el libro). Comprobar antes el saldo. */
+  debit(uuid: string, amount: number, reason: string, day: string, now = new Date()): void {
+    if (amount <= 0) return;
+    this.db.run(
+      "INSERT INTO ledger (uuid, amount, reason, season_id, day, at) VALUES (?, ?, ?, ?, ?, ?)",
+      uuid,
+      -Math.floor(amount),
+      reason,
+      this.seasonId,
+      day,
+      now.toISOString(),
+    );
+  }
+
+  /** Cuántos gastos con ese motivo lleva hoy (p. ej. tiradas de la ruleta). */
+  spentCountOn(uuid: string, reason: string, day: string): number {
+    return this.db.get<{ n: number }>("SELECT COUNT(*) AS n FROM ledger WHERE uuid = ? AND reason = ? AND day = ? AND amount < 0", uuid, reason, day)?.n ?? 0;
+  }
+
+  get timeZoneName(): string {
+    return this.timeZone;
+  }
+
   /** El regalo de esta temporada ya se repartió (los que lleguen después, lo reciben al aparecer). */
   get giftApplied(): boolean {
     return this.db.getMeta(`gift_applied:${this.seasonId}`) !== null;
@@ -236,8 +269,9 @@ export class Economy {
     return gift.total;
   }
 
+  /** Saldo en esta era (cada mundo nuevo empieza de cero; lo de las anteriores queda en el libro). */
   balance(uuid: string): number {
-    return this.db.get<{ n: number | null }>("SELECT SUM(amount) AS n FROM ledger WHERE uuid = ?", uuid)?.n ?? 0;
+    return this.db.get<{ n: number | null }>("SELECT SUM(amount) AS n FROM ledger WHERE uuid = ? AND season_id = ?", uuid, this.seasonId)?.n ?? 0;
   }
 
   earnedToday(uuid: string, now = new Date()): Record<EarnCategory, number> {
@@ -262,18 +296,16 @@ export class Economy {
     const mine = this.balance(uuid);
     if (mine <= 0) return null;
     const above = this.db.get<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM (SELECT uuid, SUM(amount) AS b FROM ledger GROUP BY uuid HAVING b > ?)",
+      "SELECT COUNT(*) AS n FROM (SELECT uuid, SUM(amount) AS b FROM ledger WHERE season_id = ? GROUP BY uuid HAVING b > ?)",
+      this.seasonId,
       mine,
     );
     return (above?.n ?? 0) + 1;
   }
 
-  /** Los más ricos (saldo total, de todas las temporadas). */
+  /** Los más ricos de esta era. */
   top(limit = 10): { uuid: string; balance: number }[] {
-    return this.db.all<{ uuid: string; balance: number }>(
-      "SELECT uuid, SUM(amount) AS balance FROM ledger GROUP BY uuid HAVING balance > 0 ORDER BY balance DESC LIMIT ?",
-      limit,
-    );
+    return topBalances(this.db, this.seasonId, limit);
   }
 
   private earnedOn(uuid: string, category: string, day: string): number {

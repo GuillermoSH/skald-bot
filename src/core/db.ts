@@ -151,6 +151,28 @@ export const MIGRATIONS: readonly string[] = [
     last_day TEXT NOT NULL
   );
   `,
+  // 8: misiones individuales (las de cada jugador cada día, y si cambió alguna) y la semanal del reino.
+  `
+  CREATE TABLE daily_assignments (
+    day      TEXT NOT NULL,
+    uuid     TEXT NOT NULL,
+    slot     INTEGER NOT NULL,
+    task     TEXT NOT NULL,
+    rerolled INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, uuid, slot)
+  );
+  CREATE TABLE weekly_missions (
+    week         TEXT PRIMARY KEY,
+    mission      TEXT NOT NULL,
+    completed_at TEXT
+  );
+  CREATE TABLE weekly_mission_baselines (
+    week  TEXT NOT NULL,
+    uuid  TEXT NOT NULL,
+    value REAL NOT NULL,
+    PRIMARY KEY (week, uuid)
+  );
+  `,
 ];
 
 export class Database {

@@ -1114,6 +1114,50 @@ def task_board() -> Image.Image:
     return c.export()
 
 
+WHEEL = 64
+
+
+def wheel(c: Px, f: int) -> None:
+    """La rueda de las nornas: ocho gajos con runas que giran bajo una flecha dorada."""
+    cx = cy = WHEEL / 2
+    r = 25
+    for y in range(WHEEL):
+        for x in range(WHEEL):
+            d = math.hypot(x - cx, y - cy)
+            if d < 31:
+                c.p(x, y, c.dither(x, y, "sky4", "sky1", d / 31))
+    turn = f / FRAMES * math.tau / 8 * 3  # vuelve a la misma posición en el bucle (3 gajos)
+    colors = ["brasa", "amber", "sailDark", "orange", "moss0", "gold", "stone2", "emberDark"]
+    for y in range(int(cy - r - 1), int(cy + r + 2)):
+        for x in range(int(cx - r - 1), int(cx + r + 2)):
+            dx, dy = x - cx, y - cy
+            d = math.hypot(dx, dy)
+            if d > r:
+                continue
+            a = (math.atan2(dy, dx) - turn) % math.tau
+            seg = int(a / (math.tau / 8))
+            col = colors[seg]
+            if d > r - 2:
+                col = "wood0" if (x + y) % 2 else "black"
+            elif abs((a % (math.tau / 8)) - 0.01) < 0.08 and d > 4:
+                col = "black"  # radios
+            c.p(x, y, col)
+    for k in range(8):  # runas en cada gajo
+        a = turn + (k + 0.5) * math.tau / 8
+        gx, gy = cx + 15 * math.cos(a), cy + 15 * math.sin(a)
+        c.sprite(int(gx) - 2, int(gy) - 3, RUNES[RUNE_ORDER[k % len(RUNE_ORDER)]], {"#": "light"})
+    c.disc(cx, cy, 4, "black")
+    c.disc(cx, cy, 3, "gold")
+    c.p(cx, cy, "light")
+    # Flecha arriba.
+    c.poly([(cx - 4, 2), (cx + 4, 2), (cx, 9)], "black")
+    c.poly([(cx - 3, 3), (cx + 3, 3), (cx, 7)], "gold")
+    for k in range(5):  # destellos
+        a = f / FRAMES * math.tau + k * math.tau / 5
+        if (f + k) % 4 < 2:
+            c.p(cx + 29 * math.cos(a), cy + 29 * math.sin(a), "light")
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -1158,6 +1202,8 @@ def main() -> None:
         if preview:
             img.convert("RGB").save(Path(preview) / f"luna-{phase}.png")
     print("luna-0..7.png:", f"{MOON_SIZE * SCALE}x{MOON_SIZE * SCALE}")
+    wheel_frames = frames(wheel, WHEEL, WHEEL)
+    save_gif("ruleta.gif", wheel_frames, 70)
     board = task_board()
     board.save(OUT / "tareas.png", optimize=True)
     if preview:
@@ -1180,6 +1226,7 @@ def main() -> None:
             ("reloj", clock_frames),
             ("einherjar", hero_frames),
             ("canto", song_frames),
+            ("ruleta", wheel_frames),
         ):
             imgs[0].convert("RGB").save(Path(preview) / f"{name}.png")
             imgs[FRAMES // 2].convert("RGB").save(Path(preview) / f"{name}-mitad.png")

@@ -116,6 +116,8 @@ export function buildTellraw(target: string, parts: readonly TextPart[], base?: 
 export const GAME_SOUNDS = {
   /** Cuerno de cabra: el saludo al entrar. */
   horn: { id: "minecraft:item.goat_horn.sound.0", volume: 0.5, pitch: 1 },
+  /** Premio gordo en la ruleta. */
+  levelup: { id: "minecraft:entity.player.levelup", volume: 0.7, pitch: 1 },
 } as const;
 export type GameSound = keyof typeof GAME_SOUNDS;
 
@@ -127,6 +129,27 @@ export function buildPlaysound(target: string, sound: GameSound): string {
   if (!PLAYER_RE.test(target)) throw new Error("Destino de playsound no válido");
   const s = GAME_SOUNDS[sound];
   return `playsound ${s.id} master ${target} ~ ~ ~ ${s.volume} ${s.pitch} ${s.volume}`;
+}
+
+// ---- give (plantilla cerrada: objetos y encantamientos de las tablas de la ruleta)
+
+const ITEM_ID_RE = /^minecraft:[a-z0-9_]{1,40}$/;
+const ENCHANT_ID_RE = /^[a-z_]{1,40}$/;
+
+/** `give <jugador> <objeto>[encantamientos] <n>`: solo ids de minecraft, 1-64 unidades. */
+export function buildGive(target: string, item: string, count: number, enchantments: readonly { id: string; level: number }[] = []): string {
+  if (!PLAYER_RE.test(target)) throw new Error("Destino de give no válido");
+  if (!ITEM_ID_RE.test(item)) throw new Error("Objeto de give no válido");
+  if (!Number.isInteger(count) || count < 1 || count > 64) throw new Error("Cantidad de give no válida");
+  let components = "";
+  if (enchantments.length > 0) {
+    const map = enchantments.map((e) => {
+      if (!ENCHANT_ID_RE.test(e.id) || !Number.isInteger(e.level) || e.level < 1 || e.level > 10) throw new Error("Encantamiento no válido");
+      return `"minecraft:${e.id}":${e.level}`;
+    });
+    components = `[minecraft:stored_enchantments={${map.join(",")}}]`;
+  }
+  return `give ${target} ${item}${components} ${count}`;
 }
 
 export interface RconSettings {
@@ -165,6 +188,12 @@ export class RconClient {
     return parseTimeQuery(time);
   }
 
+  /** Entrega un objeto con la plantilla cerrada; devuelve la respuesta del servidor. */
+  async give(target: string, item: string, count: number, enchantments: readonly { id: string; level: number }[] = []): Promise<string> {
+    const [response] = await this.exec([buildGive(target, item, count, enchantments)]);
+    return response ?? "";
+  }
+
   /** Sonido para un jugador, con la plantilla cerrada. */
   async playSound(target: string, sound: GameSound): Promise<void> {
     await this.exec([buildPlaysound(target, sound)]);
@@ -191,7 +220,7 @@ export class RconClient {
     return (await this.exec(commands)) as { [K in keyof C]: string };
   }
 
-  /** Solo la llaman `send` (lista cerrada), `tellraw` y `playSound` (plantillas cerradas). */
+  /** Solo la llaman `send` (lista cerrada), `tellraw`, `playSound` y `give` (plantillas cerradas). */
   private async exec(commands: readonly string[]): Promise<string[]> {
     const { host, port, password, timeoutMs } = this.settings;
     let rcon: Rcon;

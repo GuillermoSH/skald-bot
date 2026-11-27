@@ -132,3 +132,15 @@ describe("puesto en el ranking", () => {
     expect(e.rankOf("c")).toBeNull();
   });
 });
+
+describe("monedas por era", () => {
+  it("un mundo nuevo empieza de cero; lo de antes queda en el libro", () => {
+    const { db, seasons, seasonId } = memoryRealm();
+    const old = new Economy(db, seasonId, "UTC");
+    old.credit("a", 500, "test", "2026-11-01");
+    const next = new Economy(db, seasons.open("Era II", "yule", null).id, "UTC");
+    expect(next.balance("a")).toBe(0);
+    expect(next.top()).toEqual([]);
+    expect(old.balance("a")).toBe(500);
+  });
+});

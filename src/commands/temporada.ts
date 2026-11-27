@@ -24,7 +24,7 @@ import type { FinalRanking } from "../realm.js";
 import { FINAL_RANKING_METRICS } from "../realm.js";
 import { baseEmbed } from "../util/embeds.js";
 import { safeText } from "../util/escape.js";
-import { formatMetric } from "../util/format.js";
+import { formatCount, formatMetric } from "../util/format.js";
 import { texts } from "../util/texts.js";
 import type { Command, CommandContext } from "./types.js";
 
@@ -193,11 +193,16 @@ async function historyBlock(
     const best = ranking[m]?.[0];
     return best ? [{ metric: m, ...best }] : [];
   });
-  const resolved = await names.resolve(champions.map((c) => c.uuid));
+  const richest = ranking.coins?.[0];
+  const resolved = await names.resolve([...champions.map((c) => c.uuid), ...(richest ? [richest.uuid] : [])]);
   for (const c of champions) {
     const category = texts.gestas.categories[c.metric];
     const name = safeText(resolved.get(c.uuid) ?? texts.unknownWarrior(c.uuid), 32);
     lines.push(t.champion(`${category.emoji} ${category.label}`, name, formatMetric(METRICS[c.metric].unit, c.value)));
+  }
+  if (richest) {
+    const name = safeText(resolved.get(richest.uuid) ?? texts.unknownWarrior(richest.uuid), 32);
+    lines.push(t.champion(t.richest, name, formatCount(richest.value)));
   }
   return lines.join("\n");
 }

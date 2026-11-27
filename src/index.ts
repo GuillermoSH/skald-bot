@@ -16,7 +16,9 @@ import { AuditFeed, describeAudit, watchDiscordRoles } from "./audit.js";
 import { BackupWatcher } from "./backup-watch.js";
 import { isCommandChannelAllowed } from "./commands/guard.js";
 import { commandsByName } from "./commands/index.js";
-import { taskName } from "./commands/tareas.js";
+import { taskName, weeklyName } from "./commands/tareas.js";
+import { describePrize } from "./commands/ruleta.js";
+import { Roulette } from "./roulette.js";
 import { handleSeasonButton, handleSeasonModal, isSeasonModal, SEASON_BUTTON_ID, seasonProposalRow } from "./commands/temporada.js";
 import type { CommandContext } from "./commands/types.js";
 import { ConfigError, loadConfig } from "./config.js";
@@ -102,6 +104,7 @@ function main(): void {
     deaths: new DeathArchive(config.DATA_DIR, lang),
     realm,
     linking: null,
+    roulette: null,
   };
 
   let alerts: AlertQueue | null = null;
@@ -168,7 +171,14 @@ function main(): void {
           [seasonProposalRow()],
         );
       }
-      const { milestones, earnings, tasks } = await realm.tick();
+      const { milestones, earnings, tasks, weeklyMission } = await realm.tick();
+      // Misión del reino cumplida: anuncio en el canal de los logros y en el juego.
+      if (weeklyMission) {
+        const name = weeklyName(weeklyMission.mission);
+        log.info(`Misión del reino cumplida: ${weeklyMission.mission.id} (${weeklyMission.contributors.length} guerreros)`);
+        alerts?.pushLine("advancement", texts.tareas.weeklyAnnounce(name, weeklyMission.contributors.length));
+        if (config.GAME_CHAT_ENABLED) await ctx.rcon.tellraw("@a", gameLine(texts.tareas.gameWeeklyDone)).catch(() => undefined);
+      }
       // Misiones cumplidas: aviso privado en el juego (si el chat del juego está activo).
       if (tasks.length > 0) {
         const names = await ctx.names.resolve(tasks.map((e) => e.uuid));
@@ -291,6 +301,11 @@ function main(): void {
     await ctx.lang.ready();
     // Base de datos y temporada; los primeros del histórico, antes de seguir el log.
     await realm.init();
+    if (config.ECONOMY_ENABLED) {
+      ctx.roulette = new Roulette(ctx, (player, prize) => {
+        auditFeed.push(texts.ruleta.record(safeText(player, 16), describePrize(prize, ctx.lang)));
+      });
+    }
     const links = realm.links;
     if (config.PLAYER_ROLE_ID && links) {
       ctx.linking = new Linking({ ...config, PLAYER_ROLE_ID: config.PLAYER_ROLE_ID }, links, new MojangClient(), ctx.names, world, (m) => adminSay(m));

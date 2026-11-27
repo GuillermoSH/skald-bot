@@ -11,6 +11,7 @@ import type { NameResolver } from "../core/names.js";
 import type { RconClient } from "../core/rcon.js";
 import type { WorldStats } from "../core/stats.js";
 import type { Linking } from "../linking.js";
+import type { Roulette } from "../roulette.js";
 import type { Realm } from "../realm.js";
 
 export interface CommandContext {
@@ -24,6 +25,8 @@ export interface CommandContext {
   realm: Realm;
   /** Unión al reino; null si no está configurada (sin PLAYER_ROLE_ID o sin base de datos). */
   linking: Linking | null;
+  /** La ruleta; null si la economía está apagada. */
+  roulette: Roulette | null;
 }
 
 export interface Command {

@@ -10,7 +10,7 @@
  */
 import path from "node:path";
 import { backupDatabase, openStateDatabase, type Database } from "./core/db.js";
-import { Economy, type Earning } from "./core/economy.js";
+import { Economy, topBalances, type Earning } from "./core/economy.js";
 import { FirstsLedger } from "./core/firsts.js";
 import { migrateLegacyState } from "./core/legacy-state.js";
 import { rank, type MetricId } from "./core/metrics.js";
@@ -18,7 +18,7 @@ import { MilestoneTracker, type CrossedMilestone } from "./core/milestones.js";
 import { Links } from "./core/links.js";
 import { Reminders } from "./core/reminders.js";
 import { WeeklyStore } from "./core/weekly.js";
-import { DailyTasks, type TaskEvent } from "./core/tasks.js";
+import { DailyTasks, WeeklyMission, type TaskEvent, type WeeklyCompletion } from "./core/tasks.js";
 import { Seasons, type Season } from "./core/seasons.js";
 import { WorldStats, type PlayerRecord } from "./core/stats.js";
 import { readLevelName } from "./core/world.js";
@@ -26,7 +26,10 @@ import { log } from "./util/log.js";
 
 /** Lo que se guarda como ranking final al cerrar una temporada. */
 export const FINAL_RANKING_METRICS: readonly MetricId[] = ["play_time", "mob_kills", "deaths", "advancements", "distance", "blocks_mined"];
-export type FinalRanking = Partial<Record<MetricId, { uuid: string; value: number }[]>>;
+export type FinalRanking = Partial<Record<MetricId, { uuid: string; value: number }[]>> & {
+  /** Los más ricos de la era (las monedas no pasan a la siguiente). */
+  coins?: { uuid: string; value: number }[];
+};
 
 const BACKUPS_KEPT = 7;
 
@@ -43,6 +46,7 @@ export interface RealmTick {
   milestones: CrossedMilestone[];
   earnings: Earning[];
   tasks: TaskEvent[];
+  weeklyMission: WeeklyCompletion | null;
 }
 
 export class Realm {
@@ -54,6 +58,7 @@ export class Realm {
     milestones: MilestoneTracker;
     economy: Economy | null;
     tasks: DailyTasks;
+    weekly: WeeklyMission;
   } | null = null;
   /** Mundo nuevo detectado y aún sin temporada (level-name del servidor). */
   private pendingLevel: string | null = null;
@@ -191,7 +196,7 @@ export class Realm {
 
   /** Revisión periódica: primeros, hitos, monedas y copia diaria. */
   async tick(): Promise<RealmTick> {
-    const out: RealmTick = { milestones: [], earnings: [], tasks: [] };
+    const out: RealmTick = { milestones: [], earnings: [], tasks: [], weeklyMission: null };
     if (!this.db) return out;
     if (this.active) {
       const players = await this.world.players();
@@ -199,6 +204,7 @@ export class Realm {
       out.milestones = this.active.milestones.check(players);
       out.earnings = this.active.economy?.tick(players) ?? [];
       out.tasks = this.active.tasks.tick(players);
+      out.weeklyMission = this.active.weekly.tick(players);
     }
     try {
       const made = await backupDatabase(this.db, path.join(this.options.stateDir, "backups"), BACKUPS_KEPT);
@@ -225,6 +231,10 @@ export class Realm {
         log.warn(`Sin ranking final de «${closed.name}»: ${errorText(error)}`);
       }
     }
+    if (closed) {
+      const coins = topBalances(this.db, closed.id, 3).map((r) => ({ uuid: r.uuid, value: r.balance }));
+      if (coins.length > 0) ranking = { ...(ranking ?? {}), coins };
+    }
     const levelName = await readLevelName(this.options.dataDir);
     const opened = this.seasonsRepo.open(name, levelName, ranking);
     this.db.setMeta("season_mismatch_notified", null);
@@ -247,6 +257,11 @@ export class Realm {
     return this.active?.tasks ?? null;
   }
 
+  /** Misión semanal del reino (null en pausa o sin base de datos). */
+  get weeklyMission(): WeeklyMission | null {
+    return this.active?.weekly ?? null;
+  }
+
   private activate(season: Season): void {
     if (!this.db || !this.seasonsRepo) return;
     const economy = this.options.economy ? new Economy(this.db, season.id, this.options.timeZone) : null;
@@ -255,7 +270,8 @@ export class Realm {
       firsts: new FirstsLedger(this.db, this.seasonsRepo, season.id),
       milestones: new MilestoneTracker(this.db, season.id),
       economy,
-      tasks: new DailyTasks(this.db, this.options.timeZone, economy ? (uuid, amount, reason, day) => { economy.credit(uuid, amount, reason, day); } : null),
+      tasks: new DailyTasks(this.db, this.options.timeZone, economy),
+      weekly: new WeeklyMission(this.db, this.options.timeZone, economy),
     };
   }
 }

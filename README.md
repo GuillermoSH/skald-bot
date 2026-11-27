@@ -17,7 +17,8 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia, primeros del reino y últimos logros |
 | `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
 | `/hel [guerrero]` | Qué mata más en el reino (o a un guerrero): causas de muerte de todos los logs, Valhalla contra Hel |
-| `/tareas` | Las tres misiones del día (fácil, media y difícil), tu progreso y tu racha |
+| `/tareas [cambiar]` | Tus tres misiones del día, tu progreso, tu racha y la misión del reino de la semana; `cambiar:N` cambia una por 20 monedas |
+| `/ruleta` | La rueda de las nornas: 100 monedas por tirada, premio al azar (hasta 5 al día; hay que estar conectado al juego) |
 | `/tesoro [guerrero]` | Monedas de plata: los cofres más llenos (y el tuyo, con tu puesto, si estás unido al reino), o el de un guerrero con lo ganado hoy |
 | `/temporada actual \| historial \| nueva` | Las eras del reino (una por mundo): la actual, las pasadas con sus campeones y, solo para administradores, abrir una nueva |
 | `/quedada <titulo> <cuando> [horas] [detalles]` | Crea un evento de Discord («Minecraft · era actual»), lo anuncia en el canal y avisa a los interesados 30 min antes |
@@ -106,7 +107,7 @@ Con `ECONOMY_ENABLED=true`, los jugadores ganan **monedas de plata** jugando. Sk
 
 - El tiempo solo cuenta si en el mismo rato hubo otra actividad (contra el AFK).
 - Lo jugado antes de activar la economía no se paga: la primera vez solo se apunta desde dónde se empieza a contar.
-- Las monedas son de la persona (su UUID de Minecraft) y se conservan entre temporadas. Todo movimiento queda en un libro que solo crece.
+- Las monedas son de la persona (su UUID de Minecraft) y **por era**: cada mundo nuevo empieza de cero. Todo movimiento queda en un libro que solo crece, así que los saldos de eras pasadas se conservan (y el más rico de cada una sale en `/temporada historial`).
 - «El día» de los topes va por `TIMEZONE`.
 - **Regalo inicial** por lo jugado antes de activar la economía: `/regalo vista` (solo administradores, solo lo ve quien lo usa) enseña lo que tocaría a cada uno sin pagar nada, y `/regalo aplicar` lo reparte una sola vez. Tasa más baja que la normal (1 moneda cada 30 min, 10 enemigos, 100 bloques o 2 km) y tope de 500, porque ese tiempo incluye AFK. Quien aparezca después lo recibe al llegar.
 
@@ -137,7 +138,8 @@ Con `GAME_CHAT_ENABLED=true`, Skald también habla y escucha en el chat de Minec
 | `!ayuda` | Lista de comandos |
 | `!tesoro` | Tus monedas de plata |
 | `!cielo` | Hora, día, fase de la luna y clima (también sin unirse al reino) |
-| `!tareas` | Las misiones de hoy y tu progreso |
+| `!tareas [cambiar N]` | Tus misiones de hoy, tu progreso y la del reino |
+| `!ruleta` | Gira la rueda (100 monedas) |
 | `!recordar <cuándo> \| <texto>` | Recordatorio por Discord (también sin barra: `!recordar 2h regar`) |
 | `!quedada <cuándo> \| <título>` | Crea la quedada en Discord, como `/quedada` |
 | `!encuesta <pregunta> \| <opción> \| <opción>…` | Encuesta en Discord |
@@ -158,9 +160,15 @@ Para organizar el reino desde cualquier canal (las respuestas solo las ve quien 
 
 Las fechas se escriben a mano en la zona horaria de `TIMEZONE`.
 
-### Tareas diarias
+### Misiones
 
-Cada día (según `TIMEZONE`) hay tres misiones, las mismas para todos: una fácil, una media y una difícil, sorteadas de una lista fija (abatir enemigos concretos, picar menas, talar, recorrer kilómetros, pescar, comerciar…). El progreso es lo que suben tus estadísticas ese día. Cada misión cumplida da monedas (15, 30 o 50) y cumplir las tres suma un día de racha con un extra (10 monedas por día de racha, hasta 70). Si el chat del juego está activo, Skald te avisa en privado al cumplirlas. Se consultan con `/tareas` y `!tareas`. Sin economía, solo se ve el progreso.
+- **Diarias e individuales**: cada guerrero tiene tres al día (una fácil, una media y una difícil), sorteadas para él de una lista fija: abatir enemigos concretos, picar menas, talar, recorrer kilómetros, pescar, comerciar… Las del Nether y del End solo le salen si ya ha entrado en esa dimensión. El progreso es lo que suben sus estadísticas ese día. Cada una da 15, 30 o 50 monedas, y cumplir las tres suma un día de racha con un extra (10 por día de racha, hasta 70). Una vez al día se puede cambiar una por 20 monedas.
+- **Semanal del reino**: una por semana (de lunes a domingo) para todo el servidor, del tipo «el reino abate 1500 enemigos»; cuenta lo que aporta cada uno. Si se cumple, todos los que han aportado reciben 100 monedas, y se anuncia en el canal de los logros.
+- Se consultan con `/tareas` y `!tareas`. Si el chat del juego está activo, Skald avisa en privado al cumplir cada misión.
+
+### Ruleta
+
+`/ruleta` o `!ruleta`: 100 monedas por tirada, hasta 5 al día, estando conectado al juego (el premio llega al momento con `give`). El botín va por grupos, como los mods de botín: nada (25 %), recuperar 50 monedas (20 %), suministros de supervivencia (20 %), minerales (15 %), objetos raros (10 %), valiosos (6 %), libros encantados con uno o dos encantamientos (3 %) y un bote de 300 monedas (1 %). La cantidad varía en cada tirada según la rareza. El resultado lo ve solo quien tira; cada objeto entregado queda en el registro del canal de administración. Si no se puede entregar, se devuelven las monedas.
 
 ### Comandos solo en ciertos canales
 
@@ -169,7 +177,7 @@ Con `COMMAND_CHANNEL_IDS`, Skald solo responde a los comandos en esos canales (y
 ## Diseño y seguridad
 
 - **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura. Lo que recuerda (temporadas, primeros del reino, hitos, monedas) lo guarda en una base de datos SQLite (`node:sqlite`, sin dependencias nativas) en `STATE_DIR` (en Docker, la carpeta `state/` junto al compose), con una copia diaria en `STATE_DIR/backups` (se guardan 7); la configuración rechaza que esté dentro del mundo. Esa carpeta no la cubren las copias del servidor de Minecraft: conviene incluirla en una copia fuera de la máquina.
-- **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`, `time query time`, y `tellraw` y `playsound` con plantillas cerradas si el chat del juego está activo). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
+- **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`, `time query time`, y `tellraw`, `playsound` y `give` con plantillas cerradas: el `give` solo con los objetos y encantamientos de las tablas de la ruleta). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
 - **Sin menciones.** Todas las respuestas se envían con `allowedMentions: { parse: [] }`, y el texto que viene del servidor (MOTD, nombres) se escapa.
 - **Configuración validada al arrancar.** Si falta una variable obligatoria, el bot no arranca, y los errores nunca muestran valores (pueden ser secretos).
 - **Separación núcleo / temática.** `src/core/` habla con el servidor y no sabe nada de Discord ni del tono; los textos están en `src/util/texts.ts`.

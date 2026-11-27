@@ -17,7 +17,8 @@ import type { TextPart } from "./core/rcon.js";
 import { MAX_PENDING_PER_USER } from "./core/reminders.js";
 import { describeClock, readWeather, readWorldClock } from "./core/sky.js";
 import { describeWeather } from "./commands/cielo.js";
-import { taskName } from "./commands/tareas.js";
+import { taskName, weeklyName } from "./commands/tareas.js";
+import { describePrize, failureText } from "./commands/ruleta.js";
 import { TASK_REWARD } from "./core/tasks.js";
 import { parseWhen } from "./core/when.js";
 import { formatCount } from "./util/format.js";
@@ -75,7 +76,6 @@ export function helpMessage(): TextPart[] {
       { text: ` — ${item.desc}`, color: "gray" },
     );
   }
-  parts.push({ br: true }, { text: `  ${g.helpFooter}`, color: "dark_gray", italic: true });
   return parts;
 }
 
@@ -165,8 +165,10 @@ export class GameChat {
     }
 
     switch (cmd.name) {
+      case "ruleta":
+        return this.spinRoulette(player, uuid);
       case "tareas":
-        await this.ctx.rcon.tellraw(player, await this.tasksMessage(uuid)).catch(() => undefined);
+        await this.ctx.rcon.tellraw(player, await this.tasksMessage(uuid, cmd.args)).catch(() => undefined);
         return;
       case "tesoro": {
         const economy = this.ctx.realm.economy;
@@ -184,23 +186,63 @@ export class GameChat {
     }
   }
 
-  /** !tareas: las tres misiones de hoy con el progreso de quien pregunta. */
-  private async tasksMessage(uuid: string): Promise<TextPart[]> {
+  /** !ruleta: gira la rueda; el resultado solo lo ve quien tira (y un sonido si es gordo). */
+  private async spinRoulette(player: string, uuid: string): Promise<void> {
+    const roulette = this.ctx.roulette;
+    if (!roulette) {
+      await this.reply(player, texts.ruleta.economyOff);
+      return;
+    }
+    const result = await roulette.spin(uuid, player);
+    if (!result.ok) {
+      await this.reply(player, failureText(result.reason, result.balance));
+      return;
+    }
+    await this.ctx.lang.ready();
+    const group = texts.ruleta.groups[result.prize.group].replace(/[^\p{L}\p{N}\s¡!]/gu, "").trim();
+    await this.ctx.rcon
+      .tellraw(player, [
+        { text: g.prefix, color: "gold", bold: true },
+        { text: group ? `${group}: ` : "", color: "gold" },
+        { text: describePrize(result.prize, this.ctx.lang), color: "yellow" },
+        { br: true },
+        { text: `  ${texts.ruleta.gameAfter(formatCount(result.balance), result.spinsLeft)}`, color: "gray" },
+      ])
+      .catch(() => undefined);
+    if (["valuable", "books", "jackpot"].includes(result.prize.group)) await this.ctx.rcon.playSound(player, "levelup").catch(() => undefined);
+  }
+
+  /** !tareas [cambiar N]: tus misiones de hoy con el progreso, y la del reino. */
+  private async tasksMessage(uuid: string, args: string): Promise<TextPart[]> {
     const parts: TextPart[] = [{ text: g.prefix, color: "gold", bold: true }];
     const daily = this.ctx.realm.tasks;
-    const record = daily ? (await this.ctx.world.players().catch(() => [])).find((p) => p.uuid === uuid) : undefined;
+    const players = await this.ctx.world.players().catch(() => []);
+    const record = players.find((p) => p.uuid === uuid);
     if (!daily || !record) return [...parts, { text: texts.tareas.unavailable, color: "gray" }];
+
+    const m = /^cambiar\s+([1-3])$/i.exec(args.trim());
+    if (m) {
+      const r = daily.reroll(record, Number(m[1]));
+      parts.push({ text: r.ok ? texts.tareas.gameRerolled(taskName(r.task)) : texts.tareas.rerollFail[r.reason], color: r.ok ? "green" : "red" }, { br: true });
+    }
     parts.push({ text: texts.tareas.gameTitle, color: "yellow" });
     for (const p of daily.progressFor(record)) {
       const mark = p.done ? "✔ " : `${Math.floor(p.progress)}/${p.task.target} `;
       parts.push(
         { br: true },
-        { text: `  ${mark}`, color: p.done ? "green" : "gold" },
+        { text: `  ${p.slot}. ${mark}`, color: p.done ? "green" : "gold" },
         { text: `${taskName(p.task)} (+${TASK_REWARD[p.task.tier]})`, color: p.done ? "dark_gray" : "gray" },
       );
     }
     const streak = daily.streakOf(uuid);
     if (streak) parts.push({ br: true }, { text: `  🔥 ${streak.current}`, color: "gold" });
+    const weekly = this.ctx.realm.weeklyMission?.status(players);
+    if (weekly) {
+      const line = weekly.completedAt
+        ? texts.tareas.gameWeeklyDone
+        : texts.tareas.gameWeekly(weeklyName(weekly.mission), formatCount(Math.floor(weekly.total)), formatCount(weekly.mission.target));
+      parts.push({ br: true }, { text: `  ${line}`, color: "aqua" });
+    }
     return parts;
   }
 
