@@ -369,7 +369,7 @@ export const texts = {
     empty: "Los cofres del reino siguen vacíos. Las monedas se ganan jugando.",
     yours: (name: string, coins: string, rank: number | null) =>
       `**Tu cofre** (${name}): 🪙 ${coins}${rank ? ` · puesto **#${rank}**` : ""}`,
-    note: "-# Se gana jugando: Skald hace cuentas cada ~5 min. El tiempo quieto (AFK) no cuenta. Cada era empieza de cero.",
+    note: "-# Se gana jugando: cuenta cada vez que el servidor guarda (cada ~5 min, y al desconectarte). El tiempo quieto (AFK) no cuenta. Cada era empieza de cero.",
     disabled: "La economía del reino aún no está abierta.",
   },
 

@@ -52,8 +52,9 @@ import { formatCount } from "./util/format.js";
 import { log, setLogLevel } from "./util/log.js";
 import { texts } from "./util/texts.js";
 
-// El servidor guarda las estadísticas en cada autoguardado (~5 min).
-const REALM_TICK_MS = 5 * 60_000;
+// El servidor guarda las estadísticas en cada autoguardado (~5 min) y al desconectarse
+// alguien; mirando cada minuto, Skald lo recoge enseguida después (en vez de hasta 5 min tarde).
+const REALM_TICK_MS = 60_000;
 const INACTIVITY_CHECK_MS = 60 * 60_000;
 const LAG_CHECK_MS = 60_000;
 
