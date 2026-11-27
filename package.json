@@ -2,6 +2,7 @@
   "name": "skald",
   "version": "0.1.0",
   "private": true,
+  "license": "UNLICENSED",
   "description": "Skald: bot de Discord de consulta y avisos para un servidor de Minecraft Java",
   "type": "module",
   "packageManager": "pnpm@11.0.8",

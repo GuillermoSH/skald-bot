@@ -329,3 +329,9 @@ Los parsers de `src/core/parsers.ts` dependen del texto que devuelve el servidor
 - [x] Heraldo: bienvenidas, despedidas, boosts, rol automático y normas
 - [x] Estado de las copias de seguridad
 - [ ] Adaptadores para servidores con mods
+
+## Licencia
+
+Proyecto personal. El código es público para leerlo, pero **todos los derechos están reservados**:
+no se permite copiarlo, modificarlo, distribuirlo ni desplegarlo sin permiso del autor. Ver
+[`LICENSE`](LICENSE).
