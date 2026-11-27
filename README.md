@@ -73,6 +73,10 @@ Skald también hace de heraldo, sin bots de terceros:
 
 Necesita el *Server Members Intent* activado en el portal de desarrolladores (pestaña *Bot*). Skald solo lo pide si hay algo del heraldo configurado. Para el rol automático hace falta «Gestionar roles», y que el rol de Skald esté por encima del que va a dar. Para editar las normas, «Leer el historial de mensajes» en ese canal. Conviene desactivar los mensajes del sistema de Discord para que no salgan duplicados.
 
+### Canto del domingo
+
+Cada domingo a las 20:00 (hora de `TIMEZONE`), Skald publica en el canal de los logros un resumen de la semana: horas jugadas entre todos y quién más, el más fiero, el que más picó y más anduvo, las muertes y el más desgraciado, los logros nuevos y los primeros del reino, el más rico de la semana y un dato curioso. Para ello guarda una foto semanal de las estadísticas en su base de datos (la primera vez solo hace la foto). Si estaba apagado a esa hora, lo canta al volver; si la era está en pausa por un mundo nuevo, no canta.
+
 ### Aviso de lag
 
 Con `ADMIN_CHANNEL_ID`, Skald consulta los TPS cada minuto y avisa en ese canal si el servidor lleva unos minutos por debajo de 15 TPS (no por un pico suelto), con una pista para buscar la causa con spark; y otra vez cuando se recupera. No avisa de caídas (para eso está la monitorización) ni de `/tick freeze` o `/tick sprint`.

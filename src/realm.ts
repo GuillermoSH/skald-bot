@@ -17,6 +17,7 @@ import { rank, type MetricId } from "./core/metrics.js";
 import { MilestoneTracker, type CrossedMilestone } from "./core/milestones.js";
 import { Links } from "./core/links.js";
 import { Reminders } from "./core/reminders.js";
+import { WeeklyStore } from "./core/weekly.js";
 import { Seasons, type Season } from "./core/seasons.js";
 import { WorldStats, type PlayerRecord } from "./core/stats.js";
 import { readLevelName } from "./core/world.js";
@@ -146,6 +147,28 @@ export class Realm {
   async reconcileFirsts(players?: readonly PlayerRecord[]): Promise<number> {
     if (!this.active) return 0;
     return this.active.firsts.reconcile(players ?? (await this.world.players()));
+  }
+
+  private weeklyRepo: WeeklyStore | null = null;
+
+  /** Fotos semanales; null sin base de datos. */
+  get weekly(): WeeklyStore | null {
+    if (!this.db) return null;
+    this.weeklyRepo ??= new WeeklyStore(this.db);
+    return this.weeklyRepo;
+  }
+
+  /** Lo de la era activa para el resumen semanal; null si no hay (pausa o sin base de datos). */
+  get activeSeason(): { season: Season; firsts: FirstsLedger } | null {
+    return this.active ? { season: this.active.season, firsts: this.active.firsts } : null;
+  }
+
+  getMeta(key: string): string | null {
+    return this.db?.getMeta(key) ?? null;
+  }
+
+  setMeta(key: string, value: string | null): void {
+    this.db?.setMeta(key, value);
   }
 
   /** Primeros del reino de alguien en la era actual (0 sin base de datos o en pausa). */

@@ -72,6 +72,15 @@ export class FirstsLedger {
     );
   }
 
+  /** Los conseguidos en vivo desde `iso` (para el resumen semanal). */
+  liveSince(iso: string): { key: string; player: string; at: string }[] {
+    return this.db.all<{ key: string; player_name: string; at: string }>(
+      "SELECT key, player_name, at FROM firsts WHERE season_id = ? AND live = 1 AND player_name IS NOT NULL AND at >= ? ORDER BY at",
+      this.seasonId,
+      iso,
+    ).map((r) => ({ key: r.key, player: r.player_name, at: r.at }));
+  }
+
   /** Apunta en silencio lo que haya en los ficheros y no estuviera. Devuelve cuántos nuevos. */
   reconcile(players: readonly PlayerRecord[]): number {
     const earliest = new Map<string, { uuid: string; at: Date }>();

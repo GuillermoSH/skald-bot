@@ -119,6 +119,15 @@ export const MIGRATIONS: readonly string[] = [
     last_seen    TEXT
   );
   `,
+  // 6: fotos semanales de las estadísticas (para el resumen del domingo).
+  `
+  CREATE TABLE weekly_snapshots (
+    season_id INTEGER NOT NULL REFERENCES seasons (id),
+    taken_at  TEXT NOT NULL,
+    data      TEXT NOT NULL,
+    PRIMARY KEY (season_id, taken_at)
+  );
+  `,
 ];
 
 export class Database {

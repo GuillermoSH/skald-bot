@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("imágenes de assets/", () => {
-  it.each(["bienvenida.gif", "despedida.gif", "ofrenda.gif", "tesoro.gif", "era.gif", "quedada.gif", "reloj.gif", "einherjar.gif"])("%s es un GIF animado válido", (name) => {
+  it.each(["bienvenida.gif", "despedida.gif", "ofrenda.gif", "tesoro.gif", "era.gif", "quedada.gif", "reloj.gif", "einherjar.gif", "canto.gif"])("%s es un GIF animado válido", (name) => {
     const data = readFileSync(`assets/${name}`);
     expect(data.subarray(0, 6).toString()).toBe("GIF89a");
     expect(data.at(-1)).toBe(0x3b); // fin de fichero GIF

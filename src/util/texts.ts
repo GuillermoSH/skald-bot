@@ -124,6 +124,38 @@ export const texts = {
     } satisfies Record<MetricId, { emoji: string; label: string; hint?: string }>,
   },
 
+  // Canto del domingo (resumen semanal en el canal de los logros)
+  weekly: {
+    title: "📜 El canto del domingo",
+    intro: (era: string) => `Esto cantó Skald junto al fuego sobre la semana en **${era}**:`,
+    hours: (total: string, name: string, hours: string) => `⏳ **${total} h** en el reino entre todos. Quien más: **${name}** (${hours} h).`,
+    kills: (name: string, n: string) => `⚔️ El más fiero: **${name}**, con ${n} enemigos abatidos.`,
+    mined: (name: string, n: string) => `⛏️ El topo del reino: **${name}**, ${n} bloques picados.`,
+    distance: (name: string, km: string) => `🧭 El trotamundos: **${name}**, ${km} km recorridos.`,
+    deaths: (total: string, name: string, n: string) => `💀 **${total}** muertes en la semana. El más desgraciado: **${name}** (${n}).`,
+    noDeaths: "💀 Ni una muerte en toda la semana. Hel se aburre.",
+    advancements: (total: string, name: string, n: string) => `🏆 **${total}** logros nuevos. El más laureado: **${name}** (${n}).`,
+    firsts: (list: string) => `🌟 Primeros del reino: ${list}.`,
+    firstItem: (name: string, title: string) => `**${name}** ([${title}])`,
+    coins: (name: string, n: string) => `🪙 El más rico de la semana: **${name}**, ${n} monedas de plata ganadas.`,
+    // Dato curioso: la métrica rara con más movimiento.
+    curious: {
+      jumps: (p: string, n: string) => `🐸 ${p} ha saltado ${n} veces. ¿Huye de algo?`,
+      chickens: (p: string, n: string) => `🐔 ${p} ha despachado ${n} pollos.`,
+      fish: (p: string, n: string) => `🎣 ${p} ha sacado ${n} peces del agua.`,
+      eggs: (p: string, n: string) => `🥚 ${p} ha lanzado ${n} huevos. Nadie sabe a quién.`,
+      bells: (p: string, n: string) => `🔔 ${p} ha tocado la campana ${n} veces. Dong.`,
+      trades: (p: string, n: string) => `🤝 ${p} ha cerrado ${n} tratos con aldeanos.`,
+      breeding: (p: string, n: string) => `🐄 ${p} ha criado ${n} animales.`,
+      logs: (p: string, n: string) => `🪓 ${p} ha talado ${n} troncos.`,
+      diamonds: (p: string, n: string) => `💎 ${p} ha picado ${n} menas de diamante.`,
+      elytra: (p: string, n: string) => `🪽 ${p} ha volado ${n} km con élitros.`,
+      broken_tools: (p: string, n: string) => `🔨 ${p} ha roto ${n} herramientas de tanto darles.`,
+    },
+    quiet: "La semana fue tranquila: nadie pisó el reino. Las brasas esperan.",
+    footer: "-# El próximo canto, el domingo que viene.",
+  },
+
   // /cielo
   cielo: {
     title: "🌌 El cielo del reino",

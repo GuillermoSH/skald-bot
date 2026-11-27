@@ -120,6 +120,7 @@ GLYPHS = {
     "I": ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
     "J": ["..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."],
     "L": ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+    "M": ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
     "N": ["#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#"],
     "O": [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
     "R": ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
@@ -1001,6 +1002,84 @@ def moon_phase(phase: int) -> Image.Image:
     return c.export()
 
 
+SKALD = [  # el skald sentado, de perfil, con capucha
+    "...###.....",
+    "..#####....",
+    "..####.....",
+    "...###.....",
+    "..#####....",
+    ".#######...",
+    ".#######...",
+    ".########..",
+    "..#######..",
+    "..########.",
+    ".##########",
+    ".##.....##.",
+]
+
+NOTE = ["..##", "..#.", "..#.", "###.", "##.."]
+
+
+def song(c: Px, f: int) -> None:
+    """El skald canta junto al fuego del salón; las notas suben con las chispas."""
+    ph = f / FRAMES * math.tau
+    floor = 64
+    # Salón: pared de tablones con escudos y vigas.
+    for y in range(c.h):
+        for x in range(c.w):
+            c.p(x, y, "wood0" if (x // 6) % 2 else "sky3" if y < floor else "wood1")
+    for x in range(0, c.w, 6):
+        for y in range(0, floor):
+            c.p(x, y, "black")
+    c.rect(0, 14, c.w, 15, "wood1")
+    for k, sx in enumerate((24, 52, 148, 176)):
+        c.disc(sx, 30, 6, "black")
+        c.disc(sx, 30, 5, ("brasa", "gold", "amber", "brasa")[k])
+        c.p(sx, 30, "light")
+    c.rect(0, floor, c.w, c.h, "wood1")
+    for x in range(c.w):
+        c.p(x, floor, "black")
+    # Resplandor del fuego que late.
+    cx, base = 100, floor - 1
+    glow = 0.5 + 0.5 * math.sin(ph * 2)
+    for y in range(18, floor):
+        for x in range(40, 160):
+            d = math.hypot((x - cx) / 1.6, y - base)
+            if d < 46 + glow * 4 and BAYER4[y % 4][x % 4] / 16 > d / 52:
+                c.p(x, y, "emberDark" if d > 26 else "brasa")
+    # Hoguera: piedras y llamas.
+    for k in range(-4, 5):
+        c.disc(cx + k * 3, base, 1.6, "stone1" if k % 2 else "stone2")
+    for k in range(-6, 7):
+        h = (11 - abs(k) * 1.4) * (0.75 + 0.35 * abs(math.sin(ph * 3 + k)))
+        for j in range(int(h)):
+            col = "brasa" if j < 2 else "amber" if j < h * 0.5 else "orange" if j < h * 0.8 else "gold"
+            c.p(cx + k, base - 2 - j, col)
+    # El skald, a la izquierda del fuego, con la lira dorada.
+    k2 = 2
+    gx, gy = 52, floor - len(SKALD) * k2
+    for j, row in enumerate(SKALD):
+        for i, ch in enumerate(row):
+            if ch == "#":
+                c.rect(gx + i * k2, gy + j * k2, gx + i * k2 + 1, gy + j * k2 + 1, "black")
+    lx, ly = gx + 19, gy + 6
+    c.line([(lx, ly), (lx + 2, ly + 12)], "gold")
+    c.line([(lx + 8, ly), (lx + 6, ly + 12)], "gold")
+    c.line([(lx, ly), (lx + 8, ly)], "gold")
+    c.line([(lx + 2, ly + 12), (lx + 6, ly + 12)], "orange")
+    for sx in (lx + 3, lx + 4, lx + 5):  # cuerdas que vibran
+        c.line([(sx + (1 if (f + sx) % 4 < 2 else 0), ly + 1), (sx, ly + 11)], "light")
+    # Notas que suben y se desvanecen.
+    for n in range(4):
+        t = ((f / FRAMES) + n / 4) % 1
+        nx = lx + 10 + n * 9 + 4 * math.sin(ph + n)
+        ny = ly + 4 - t * 38
+        col = "light" if t < 0.4 else "gold" if t < 0.75 else "amber"
+        c.sprite(int(nx), int(ny), NOTE, {"#": col})
+    embers(c, f, seed=31, count=14)
+    title(c, "EL CANTO DEL DOMINGO", 3)
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -1035,6 +1114,8 @@ def main() -> None:
         print(f"panel-{state}.png: {(OUT / f'panel-{state}.png').stat().st_size // 1024} KiB, {img.width}x{img.height}")
         if preview:
             img.convert("RGB").save(Path(preview) / f"panel-{state}.png")
+    song_frames = frames(song, W, 75)
+    save_gif("canto.gif", song_frames, 110)
     hero_frames = frames(einherjar, W, 75)
     save_gif("einherjar.gif", hero_frames, 100)
     for phase in range(8):
@@ -1060,6 +1141,7 @@ def main() -> None:
             ("quedada", horn_frames),
             ("reloj", clock_frames),
             ("einherjar", hero_frames),
+            ("canto", song_frames),
         ):
             imgs[0].convert("RGB").save(Path(preview) / f"{name}.png")
             imgs[FRAMES // 2].convert("RGB").save(Path(preview) / f"{name}-mitad.png")

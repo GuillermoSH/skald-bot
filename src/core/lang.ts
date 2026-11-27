@@ -266,6 +266,14 @@ export class Translator {
 
   // ---- ids
 
+  /** Texto en español de una clave de idioma ("advancements.nether.explore_nether.title"); si no, algo legible. */
+  fromKey(key: string): string {
+    const es = this.es.get(key);
+    if (es) return es;
+    const parts = key.split(".");
+    return prettify(parts.at(-2) ?? key);
+  }
+
   /** "minecraft:nether/explore_nether" → "Cálidos destinos turísticos". */
   advancement(id: string): string {
     const { ns, name } = splitId(id);

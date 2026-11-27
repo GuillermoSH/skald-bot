@@ -233,6 +233,16 @@ export class Economy {
     return out;
   }
 
+  /** Monedas ganadas jugando desde `iso` (sin el regalo), de más a menos. */
+  earnedSince(iso: string, limit = 3): { uuid: string; coins: number }[] {
+    return this.db.all<{ uuid: string; coins: number }>(
+      `SELECT uuid, SUM(amount) AS coins FROM ledger WHERE at >= ? AND amount > 0 AND reason != '${GIFT_REASON}'
+       GROUP BY uuid ORDER BY coins DESC LIMIT ?`,
+      iso,
+      limit,
+    );
+  }
+
   /** Puesto en el ranking (1 = el más rico), o null si no tiene monedas. */
   rankOf(uuid: string): number | null {
     const mine = this.balance(uuid);

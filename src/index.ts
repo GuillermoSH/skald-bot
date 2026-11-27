@@ -30,6 +30,7 @@ import { Herald, heraldNeedsMembers } from "./herald.js";
 import { Realm } from "./realm.js";
 import { GameChat } from "./ingame.js";
 import { startPanel } from "./panel.js";
+import { startWeeklySong } from "./weekly-song.js";
 import { gameLine } from "./util/game.js";
 import { startReminderWatch } from "./reminder-watch.js";
 import { describePerformance } from "./commands/reino.js";
@@ -173,6 +174,7 @@ function main(): void {
   let realmTimer: NodeJS.Timeout | null = null;
   let stopReminders: () => void = () => {};
   let stopPanel: () => void = () => {};
+  let stopWeekly: () => void = () => {};
   let inactivityTimer: NodeJS.Timeout | null = null;
 
   const needsMembers = heraldNeedsMembers(config);
@@ -307,6 +309,8 @@ function main(): void {
       gameChat = new GameChat(ctx, ready);
       log.info("Skald escucha el chat del juego (comandos con «!»)");
     }
+    // Canto del domingo (resumen semanal en el canal de los logros).
+    stopWeekly = startWeeklySong(ready, ctx);
     // Panel del reino (después de la temporada, para enseñar la era).
     if (config.PANEL_CHANNEL_ID) stopPanel = await startPanel(ready, ctx, config.PANEL_CHANNEL_ID);
     try {
@@ -338,6 +342,7 @@ function main(): void {
     if (realmTimer) clearInterval(realmTimer);
     stopReminders();
     stopPanel();
+    stopWeekly();
     if (inactivityTimer) clearInterval(inactivityTimer);
     if (lagTimer) clearInterval(lagTimer);
     alerts?.dispose();
