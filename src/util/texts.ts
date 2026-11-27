@@ -242,12 +242,14 @@ export const texts = {
     link: "[abrir en Discord]",
     newQuedada: (title: string, when: string) => `Nueva quedada: ${title} (${when}). Pulsa «Interesado» en Discord para que te avise.`,
     quedadaSoon: (title: string) => `La quedada «${title}» empieza en 30 minutos. ¡Al salón, guerreros!`,
-    help: [
-      "Comandos de Skald en el juego:",
-      "!recordar <cuándo> | <texto> — te lo recuerdo por Discord (ej.: !recordar 2h | regar los cultivos)",
-      "!quedada <cuándo> | <título> — crea un evento en Discord (ej.: !quedada 24/12 21:30 | Asalto al Nether)",
-      "!encuesta <pregunta> | <opción> | <opción>… — encuesta en Discord",
-      "!tesoro — tus monedas de plata",
+    // !ayuda: un solo mensaje; cada comando se puede pulsar y enseña su uso al pasar el ratón.
+    helpTitle: "Lo que sé hacer en el juego:",
+    helpFooter: "Ratón encima: ejemplo. Clic: escribirlo.",
+    helpItems: [
+      { cmd: "!recordar", desc: "te lo recuerdo en Discord", usage: "!recordar 2h | regar\n(30m, 2h, mañana 18:00, 24/12 21:30)" },
+      { cmd: "!quedada", desc: "evento en Discord", usage: "!quedada 24/12 21:30 | Asalto al Nether" },
+      { cmd: "!encuesta", desc: "encuesta en Discord", usage: "!encuesta ¿Nether o End? | Nether | End" },
+      { cmd: "!tesoro", desc: "tus monedas de plata", usage: "!tesoro" },
     ],
     notLinked: "Primero únete al reino en Discord: pulsa «Acepto las runas» en #runas.",
     // Saludo al entrar al servidor (solo lo ve quien entra).

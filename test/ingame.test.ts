@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../src/commands/types.js";
 import { LogParser } from "../src/core/logwatch.js";
 import { buildPlaysound, buildTellraw, type TextPart } from "../src/core/rcon.js";
-import { GameChat, parseGameCommand, splitWhen } from "../src/ingame.js";
+import { GameChat, helpMessage, parseGameCommand, splitWhen } from "../src/ingame.js";
 import { fixtureTranslator } from "./helpers.js";
 
 describe("buildTellraw (plantilla cerrada)", () => {
@@ -84,7 +84,9 @@ describe("comandos con «!»", () => {
     await chat.onChat("Floki", "!tesoro");
     expect(said).toEqual([{ target: "Floki", text: expect.stringContaining("únete al reino") as string }]);
     await chat.onChat("Ivar", "!ayuda");
-    expect(said.filter((s) => s.target === "Ivar").length).toBeGreaterThan(1);
+    const help = said.filter((s) => s.target === "Ivar");
+    expect(help).toHaveLength(1); // un solo mensaje
+    expect(help[0]?.text).toMatch(/!recordar.*\n.*!quedada.*\n.*!encuesta.*\n.*!tesoro/s);
   });
 
   it("unido: !tesoro; y no más de un comando cada pocos segundos", async () => {
@@ -144,8 +146,8 @@ describe("plantillas: cabeza, salto de línea y sonido", () => {
     const cmd = buildTellraw("@a", [{ head: "Ragnar" }, { br: true }, { text: "a\nb" }]);
     const json = JSON.parse(cmd.slice("tellraw @a ".length)) as unknown[];
     expect(json[1]).toEqual({ object: "player", player: { name: "Ragnar" }, hat: true });
-    expect(json[2]).toEqual({ text: "\n" });
-    expect(json[3]).toEqual({ text: "a b" });
+    // El salto va pegado al texto siguiente; el del jugador sigue sin saltos.
+    expect(json[2]).toEqual({ text: "\na b" });
     expect(() => buildTellraw("@a", [{ head: "@e" }])).toThrow();
   });
 
@@ -158,5 +160,16 @@ describe("plantillas: cabeza, salto de línea y sonido", () => {
     expect(buildPlaysound("Ragnar", "horn")).toBe("playsound minecraft:item.goat_horn.sound.0 master Ragnar ~ ~ ~ 0.5 1 0.5");
     expect(() => buildPlaysound("@a", "horn")).toThrow();
     expect(() => buildPlaysound("Ragnar x", "horn")).toThrow();
+  });
+});
+
+describe("!ayuda", () => {
+  it("cada comando se puede pulsar y lleva su ejemplo al pasar el ratón (con saltos de línea)", () => {
+    const cmd = buildTellraw("Ragnar", helpMessage());
+    const json = JSON.parse(cmd.slice("tellraw Ragnar ".length)) as { text?: string; click_event?: { command: string }; hover_event?: { value: string } }[];
+    const recordar = json.find((c) => c.text === "!recordar");
+    expect(recordar?.click_event?.command).toBe("!recordar ");
+    expect(recordar?.hover_event?.value).toContain("\n");
+    expect(cmd.length).toBeLessThan(1300);
   });
 });

@@ -42,33 +42,47 @@ const PLAYER_RE = /^[A-Za-z0-9_]{3,16}$/;
 const MAX_COMMAND_BYTES = 1300;
 
 /** Sin caracteres de control ni códigos de formato de Minecraft (§). */
-function cleanText(text: string): string {
+function cleanText(text: string, keepNewlines = false): string {
   // eslint-disable-next-line no-control-regex
-  return text.replace(/[\u0000-\u001f\u007f§]/g, " ");
+  const cleaned = text.replace(keepNewlines ? /[\u0000-\u0009\u000b-\u001f\u007f§]/g : /[\u0000-\u001f\u007f§]/g, " ");
+  return cleaned;
+}
+
+function headComponent(name: string): Record<string, unknown> {
+  if (!PLAYER_RE.test(name)) throw new Error("Nombre de jugador no válido");
+  return { object: "player", player: { name }, hat: true };
 }
 
 /** Construye el comando `tellraw` (lanza si el destino no es válido). */
 export function buildTellraw(target: string, parts: readonly TextPart[]): string {
   if (target !== "@a" && !PLAYER_RE.test(target)) throw new Error("Destino de tellraw no válido");
   let budget = 600; // caracteres de texto como mucho
-  const components = parts.map((p) => {
-    if ("br" in p) return { text: "\n" };
-    if ("head" in p) {
-      if (!PLAYER_RE.test(p.head)) throw new Error("Nombre de jugador no válido");
-      return { object: "player", player: { name: p.head }, hat: true };
+  // Un salto de línea seguido de texto va en el mismo componente (ocupa menos).
+  const state = { pendingBreak: false };
+  const components: Record<string, unknown>[] = parts.flatMap((p) => {
+    if ("br" in p) {
+      if (state.pendingBreak) return [{ text: "\n" }];
+      state.pendingBreak = true;
+      return [];
     }
+    const lead = state.pendingBreak ? "\n" : "";
+    state.pendingBreak = false;
+    if ("head" in p && lead) return [{ text: lead }, headComponent(p.head)];
+    if ("head" in p) return [headComponent(p.head)];
     const text = cleanText(p.text).slice(0, Math.max(0, budget));
     budget -= text.length;
-    return {
-      text,
+    return [{
+      text: lead + text,
       ...(p.color ? { color: p.color } : {}),
       ...(p.bold ? { bold: true } : {}),
       ...(p.italic ? { italic: true } : {}),
-      ...(p.hover ? { hover_event: { action: "show_text", value: cleanText(p.hover).slice(0, 200) } } : {}),
+      // En el texto emergente sí se permiten saltos de línea (lo escribe Skald, no un jugador).
+      ...(p.hover ? { hover_event: { action: "show_text", value: cleanText(p.hover, true).slice(0, 200) } } : {}),
       ...(p.url && /^https:\/\/[^\s"]+$/.test(p.url) ? { click_event: { action: "open_url", url: p.url } } : {}),
-      ...(!p.url && p.suggest && /^![a-z]{1,20}$/.test(p.suggest) ? { click_event: { action: "suggest_command", command: p.suggest } } : {}),
-    };
+      ...(!p.url && p.suggest && /^![a-z]{1,20} ?$/.test(p.suggest) ? { click_event: { action: "suggest_command", command: p.suggest } } : {}),
+    }];
   });
+  if (state.pendingBreak) components.push({ text: "\n" });
   const command = `tellraw ${target} ${JSON.stringify(["", ...components])}`;
   if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) throw new Error("Mensaje de tellraw demasiado largo");
   return command;

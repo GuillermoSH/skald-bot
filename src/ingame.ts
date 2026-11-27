@@ -53,6 +53,25 @@ export function splitWhen(args: string, now: Date, timeZone: string): { at: Date
   return null;
 }
 
+/** !ayuda en un solo mensaje: cada comando se pulsa (queda escrito) y enseña su uso al pasar el ratón. */
+export function helpMessage(): TextPart[] {
+  const [mark] = g.lineMarks;
+  const parts: TextPart[] = [
+    { text: g.prefix, color: "gold", bold: true },
+    { text: `${mark}${g.helpTitle}`, color: "yellow" },
+  ];
+  for (const item of g.helpItems) {
+    parts.push(
+      { br: true },
+      { text: `  ${g.welcomeMark}`, color: "gold" },
+      { text: item.cmd, color: "aqua", suggest: `${item.cmd} `, ...(item.usage !== item.cmd ? { hover: item.usage } : {}) },
+      { text: ` — ${item.desc}`, color: "gray" },
+    );
+  }
+  parts.push({ br: true }, { text: `  ${g.helpFooter}`, color: "dark_gray", italic: true });
+  return parts;
+}
+
 export class GameChat {
   private readonly lastCommand = new Map<string, number>();
   private readonly creations = new Map<string, number[]>();
@@ -117,7 +136,9 @@ export class GameChat {
     log.info(`!${cmd.name} por ${player} (juego)`);
 
     if (cmd.name === "ayuda" || cmd.name === "help") {
-      for (const line of g.help) await this.reply(player, line);
+      await this.ctx.rcon.tellraw(player, helpMessage()).catch((error: unknown) => {
+        log.warn(`No se pudo enseñar la ayuda a ${player}: ${error instanceof Error ? error.message : String(error)}`);
+      });
       return;
     }
 
