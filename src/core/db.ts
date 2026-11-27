@@ -128,6 +128,29 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (season_id, taken_at)
   );
   `,
+  // 7: tareas diarias (punto de partida del día, misiones cumplidas y rachas).
+  `
+  CREATE TABLE daily_baselines (
+    day    TEXT NOT NULL,
+    uuid   TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    value  REAL NOT NULL,
+    PRIMARY KEY (day, uuid, metric)
+  );
+  CREATE TABLE daily_done (
+    day  TEXT NOT NULL,
+    uuid TEXT NOT NULL,
+    task TEXT NOT NULL,
+    at   TEXT NOT NULL,
+    PRIMARY KEY (day, uuid, task)
+  );
+  CREATE TABLE streaks (
+    uuid     TEXT PRIMARY KEY,
+    current  INTEGER NOT NULL,
+    best     INTEGER NOT NULL,
+    last_day TEXT NOT NULL
+  );
+  `,
 ];
 
 export class Database {

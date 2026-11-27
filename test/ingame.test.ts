@@ -168,7 +168,7 @@ describe("!ayuda", () => {
   it("cada comando se puede pulsar y lleva su ejemplo al pasar el ratón (con saltos de línea)", () => {
     const cmd = buildTellraw("Ragnar", helpMessage(), HELP_BASE);
     const json = snbtToJson(cmd.slice("tellraw Ragnar ".length)) as { text?: string; click_event?: { command: string }; hover_event?: { value: string } }[];
-    const recordar = json.find((c) => c.text === "!recordar");
+    const recordar = json.find((c) => c.text?.endsWith("!recordar"));
     expect(recordar?.click_event?.command).toBe("!recordar ");
     expect(recordar?.hover_event?.value).toContain("\n");
     expect(cmd.length).toBeLessThan(1300);
@@ -195,7 +195,7 @@ describe("!cielo", () => {
     expect(said[0]?.text).toMatch(/Noche, 21:30 · día 17 · Luna llena\n.*Clima: Despejado · lloverá en ~105 min/s);
   });
 
-  it("la ayuda (ya con !cielo) cabe en un mensaje de RCON", () => {
+  it("la ayuda (ya con !cielo y !tareas) cabe en un mensaje de RCON", () => {
     expect(Buffer.byteLength(buildTellraw("DarkParasite94", helpMessage(), HELP_BASE))).toBeLessThan(1300);
   });
 });

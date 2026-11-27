@@ -1080,6 +1080,40 @@ def song(c: Px, f: int) -> None:
     title(c, "EL CANTO DEL DOMINGO", 3)
 
 
+BOARD = 48
+
+
+def task_board() -> Image.Image:
+    """Tablón de misiones: madera, tres pergaminos clavados y una runa encima."""
+    c = Px(BOARD, BOARD, fill="sky1")
+    cx = BOARD / 2
+    for y in range(BOARD):
+        for x in range(BOARD):
+            d = math.hypot(x - cx, y - cx)
+            if d < 23:
+                c.p(x, y, c.dither(x, y, "sky4", "sky1", d / 23))
+    # Postes y tablero.
+    c.rect(9, 10, 11, 44, "wood0")
+    c.rect(36, 10, 38, 44, "wood0")
+    for y in range(12, 38):
+        for x in range(8, 40):
+            c.p(x, y, "wood2" if (y - 12) % 5 else "wood0")
+    c.rect(7, 11, 40, 12, "black")
+    c.rect(7, 38, 40, 38, "black")
+    # Tres pergaminos (verde, ámbar y brasa: fácil, media, difícil).
+    for k, (px, col) in enumerate(((11, "moss1"), (21, "amber"), (31, "brasa"))):
+        top = 16 + (k % 2) * 2
+        c.rect(px - 3, top, px + 3, top + 14, "light")
+        c.rect(px - 3, top + 14, px + 3, top + 14, "gold")
+        for line in range(3):
+            c.rect(px - 2, top + 3 + line * 3, px + 1 + (line % 2), top + 3 + line * 3, "stone2")
+        c.p(px, top, col)
+        c.p(px, top - 1, "black")
+    # Runa ᚠ dorada sobre el tablero.
+    c.sprite(int(cx) - 2, 3, RUNES["fehu"], {"#": "gold"})
+    return c.export()
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -1124,6 +1158,10 @@ def main() -> None:
         if preview:
             img.convert("RGB").save(Path(preview) / f"luna-{phase}.png")
     print("luna-0..7.png:", f"{MOON_SIZE * SCALE}x{MOON_SIZE * SCALE}")
+    board = task_board()
+    board.save(OUT / "tareas.png", optimize=True)
+    if preview:
+        board.convert("RGB").save(Path(preview) / "tareas.png")
     clock_frames = frames(hourglass, CLOCK, CLOCK)
     save_gif("reloj.gif", clock_frames, 120)
     banner = rules_banner()

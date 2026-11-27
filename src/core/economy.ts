@@ -162,6 +162,20 @@ export class Economy {
     });
   }
 
+  /** Apunta un ingreso (tareas, rachas…) en el libro, con la temporada de esta economía. */
+  credit(uuid: string, amount: number, reason: string, day: string, now = new Date()): void {
+    if (amount <= 0) return;
+    this.db.run(
+      "INSERT INTO ledger (uuid, amount, reason, season_id, day, at) VALUES (?, ?, ?, ?, ?, ?)",
+      uuid,
+      Math.floor(amount),
+      reason,
+      this.seasonId,
+      day,
+      now.toISOString(),
+    );
+  }
+
   /** El regalo de esta temporada ya se repartió (los que lleguen después, lo reciben al aparecer). */
   get giftApplied(): boolean {
     return this.db.getMeta(`gift_applied:${this.seasonId}`) !== null;

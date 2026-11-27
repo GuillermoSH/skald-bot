@@ -5,6 +5,7 @@
 import type { AdvancementKind } from "../core/logwatch.js";
 import type { BackupStatus } from "../core/backups.js";
 import type { DayPeriod } from "../core/sky.js";
+import type { TaskTier } from "../core/tasks.js";
 import type { EarnCategory } from "../core/economy.js";
 import type { MetricId } from "../core/metrics.js";
 import type { MilestoneId } from "../core/milestones.js";
@@ -122,6 +123,46 @@ export const texts = {
       swim: { emoji: "🧜", label: "Sirena", hint: "Distancia nadando o caminando bajo el agua." },
       bells: { emoji: "🔔", label: "Campanero", hint: "Campanas tocadas. Dong." },
     } satisfies Record<MetricId, { emoji: string; label: string; hint?: string }>,
+  },
+
+  // Tareas diarias (/tareas y !tareas). {n} = objetivo.
+  tareas: {
+    title: "📋 Las misiones del día",
+    names: {
+      kill_mobs_easy: (n: string) => `Abate ${n} enemigos`,
+      mine_blocks_easy: (n: string) => `Pica ${n} bloques`,
+      travel_easy: (n: string) => `Recorre ${n} km`,
+      fish_easy: (n: string) => `Pesca ${n} peces`,
+      sleep: () => "Duerme en una cama",
+      breed_easy: (n: string) => `Cría ${n} animales`,
+      kill_zombies: (n: string) => `Abate ${n} zombis`,
+      kill_skeletons: (n: string) => `Abate ${n} esqueletos`,
+      chop_logs: (n: string) => `Tala ${n} troncos`,
+      travel_medium: (n: string) => `Recorre ${n} km`,
+      mine_iron: (n: string) => `Pica ${n} menas de hierro`,
+      trade: (n: string) => `Cierra ${n} tratos con aldeanos`,
+      kill_creepers: (n: string) => `Abate ${n} creepers`,
+      kill_endermen: (n: string) => `Abate ${n} endermen`,
+      mine_diamonds: (n: string) => `Pica ${n} menas de diamante`,
+      kill_mobs_hard: (n: string) => `Abate ${n} enemigos`,
+      travel_hard: (n: string) => `Recorre ${n} km`,
+      mine_blocks_hard: (n: string) => `Pica ${n} bloques`,
+    } as Record<string, (n: string) => string>,
+    tier: { easy: "🟢", medium: "🟡", hard: "🔴" } satisfies Record<TaskTier, string>,
+    line: (tier: string, name: string, coins: string) => `${tier} ${name} · 🪙 ${coins}`,
+    progress: (now: string, target: string) => `${now} / ${target}`,
+    done: "✅",
+    yourHeading: (name: string) => `### Tu progreso (${name})`,
+    streak: (days: number, best: number) => `🔥 Racha: **${days}** ${days === 1 ? "día" : "días"} (mejor: ${best})`,
+    noStreak: "🔥 Sin racha todavía: cumple las tres para empezarla.",
+    bonusNote: "-# Cumplir las tres suma un día de racha y un extra (10 monedas por día de racha, hasta 70).",
+    notLinked: "-# Únete al reino (botón «Acepto las runas») para ver tu progreso aquí.",
+    resets: (when: string) => `-# Las misiones cambian ${when}.`,
+    unavailable: "Las misiones del día no están disponibles ahora mismo.",
+    // En el juego (texto plano)
+    gameTitle: "Misiones de hoy:",
+    gameDone: (name: string, coins: string) => `Misión cumplida: ${name} (+${coins} monedas)`,
+    gameStreak: (days: number, bonus: string) => `¡Las tres de hoy! Racha de ${days} ${days === 1 ? "día" : "días"} (+${bonus} monedas)`,
   },
 
   // Canto del domingo (resumen semanal en el canal de los logros)
@@ -340,6 +381,7 @@ export const texts = {
       { cmd: "!encuesta", desc: "encuesta en Discord", usage: "!encuesta ¿Nether o End? | Nether | End" },
       { cmd: "!tesoro", desc: "tus monedas de plata", usage: "!tesoro" },
       { cmd: "!cielo", desc: "hora, luna y clima", usage: "!cielo" },
+      { cmd: "!tareas", desc: "misiones del día", usage: "!tareas" },
     ],
     // !cielo (texto plano para el chat del juego)
     skyPeriod: { dawn: "Amanecer", day: "Día", dusk: "Atardecer", night: "Noche" } satisfies Record<DayPeriod, string>,

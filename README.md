@@ -17,6 +17,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia, primeros del reino y últimos logros |
 | `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
 | `/hel [guerrero]` | Qué mata más en el reino (o a un guerrero): causas de muerte de todos los logs, Valhalla contra Hel |
+| `/tareas` | Las tres misiones del día (fácil, media y difícil), tu progreso y tu racha |
 | `/tesoro [guerrero]` | Monedas de plata: los cofres más llenos (y el tuyo, con tu puesto, si estás unido al reino), o el de un guerrero con lo ganado hoy |
 | `/temporada actual \| historial \| nueva` | Las eras del reino (una por mundo): la actual, las pasadas con sus campeones y, solo para administradores, abrir una nueva |
 | `/quedada <titulo> <cuando> [horas] [detalles]` | Crea un evento de Discord («Minecraft · era actual»), lo anuncia en el canal y avisa a los interesados 30 min antes |
@@ -136,6 +137,7 @@ Con `GAME_CHAT_ENABLED=true`, Skald también habla y escucha en el chat de Minec
 | `!ayuda` | Lista de comandos |
 | `!tesoro` | Tus monedas de plata |
 | `!cielo` | Hora, día, fase de la luna y clima (también sin unirse al reino) |
+| `!tareas` | Las misiones de hoy y tu progreso |
 | `!recordar <cuándo> \| <texto>` | Recordatorio por Discord (también sin barra: `!recordar 2h regar`) |
 | `!quedada <cuándo> \| <título>` | Crea la quedada en Discord, como `/quedada` |
 | `!encuesta <pregunta> \| <opción> \| <opción>…` | Encuesta en Discord |
@@ -155,6 +157,10 @@ Para organizar el reino desde cualquier canal (las respuestas solo las ve quien 
 - `/recordatorio` guarda los recordatorios en la base de datos: sobreviven a los reinicios (lo que venció con Skald apagado llega con una nota de retraso). Por privado; si los tiene cerrados, en el canal donde se pidió, mencionando solo a esa persona. Máximo 25 pendientes por persona y un año de antelación.
 
 Las fechas se escriben a mano en la zona horaria de `TIMEZONE`.
+
+### Tareas diarias
+
+Cada día (según `TIMEZONE`) hay tres misiones, las mismas para todos: una fácil, una media y una difícil, sorteadas de una lista fija (abatir enemigos concretos, picar menas, talar, recorrer kilómetros, pescar, comerciar…). El progreso es lo que suben tus estadísticas ese día. Cada misión cumplida da monedas (15, 30 o 50) y cumplir las tres suma un día de racha con un extra (10 monedas por día de racha, hasta 70). Si el chat del juego está activo, Skald te avisa en privado al cumplirlas. Se consultan con `/tareas` y `!tareas`. Sin economía, solo se ve el progreso.
 
 ### Comandos solo en ciertos canales
 

@@ -18,6 +18,7 @@ import { MilestoneTracker, type CrossedMilestone } from "./core/milestones.js";
 import { Links } from "./core/links.js";
 import { Reminders } from "./core/reminders.js";
 import { WeeklyStore } from "./core/weekly.js";
+import { DailyTasks, type TaskEvent } from "./core/tasks.js";
 import { Seasons, type Season } from "./core/seasons.js";
 import { WorldStats, type PlayerRecord } from "./core/stats.js";
 import { readLevelName } from "./core/world.js";
@@ -41,12 +42,19 @@ export interface RealmOptions {
 export interface RealmTick {
   milestones: CrossedMilestone[];
   earnings: Earning[];
+  tasks: TaskEvent[];
 }
 
 export class Realm {
   private db: Database | null = null;
   private seasonsRepo: Seasons | null = null;
-  private active: { season: Season; firsts: FirstsLedger; milestones: MilestoneTracker; economy: Economy | null } | null = null;
+  private active: {
+    season: Season;
+    firsts: FirstsLedger;
+    milestones: MilestoneTracker;
+    economy: Economy | null;
+    tasks: DailyTasks;
+  } | null = null;
   /** Mundo nuevo detectado y aún sin temporada (level-name del servidor). */
   private pendingLevel: string | null = null;
 
@@ -183,13 +191,14 @@ export class Realm {
 
   /** Revisión periódica: primeros, hitos, monedas y copia diaria. */
   async tick(): Promise<RealmTick> {
-    const out: RealmTick = { milestones: [], earnings: [] };
+    const out: RealmTick = { milestones: [], earnings: [], tasks: [] };
     if (!this.db) return out;
     if (this.active) {
       const players = await this.world.players();
       this.active.firsts.reconcile(players);
       out.milestones = this.active.milestones.check(players);
       out.earnings = this.active.economy?.tick(players) ?? [];
+      out.tasks = this.active.tasks.tick(players);
     }
     try {
       const made = await backupDatabase(this.db, path.join(this.options.stateDir, "backups"), BACKUPS_KEPT);
@@ -233,13 +242,20 @@ export class Realm {
     this.db = null;
   }
 
+  /** Tareas diarias de la era activa (null en pausa o sin base de datos). */
+  get tasks(): DailyTasks | null {
+    return this.active?.tasks ?? null;
+  }
+
   private activate(season: Season): void {
     if (!this.db || !this.seasonsRepo) return;
+    const economy = this.options.economy ? new Economy(this.db, season.id, this.options.timeZone) : null;
     this.active = {
       season,
       firsts: new FirstsLedger(this.db, this.seasonsRepo, season.id),
       milestones: new MilestoneTracker(this.db, season.id),
-      economy: this.options.economy ? new Economy(this.db, season.id, this.options.timeZone) : null,
+      economy,
+      tasks: new DailyTasks(this.db, this.options.timeZone, economy ? (uuid, amount, reason, day) => { economy.credit(uuid, amount, reason, day); } : null),
     };
   }
 }

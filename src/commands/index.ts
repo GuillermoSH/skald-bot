@@ -15,6 +15,7 @@ import { quedada } from "./quedada.js";
 import { recordatorio } from "./recordatorio.js";
 import { saga } from "./saga.js";
 import { temporada } from "./temporada.js";
+import { tareas } from "./tareas.js";
 import { tesoro } from "./tesoro.js";
 import { desvincular, vincular } from "./vincular.js";
 import type { Command } from "./types.js";
@@ -29,6 +30,7 @@ export const commands: readonly Command[] = [
   hel,
   saga,
   tesoro,
+  tareas,
   quedada,
   encuesta,
   recordatorio,

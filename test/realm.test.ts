@@ -45,7 +45,7 @@ describe("Realm", () => {
     expect(await realm.checkSeason()).toBeNull();
     expect(realm.pendingLevelName).toBe("yule");
     expect(realm.claimFirst("advancements.end.kill_dragon.title", "Floki", new Date())).toBe(false);
-    expect(await realm.tick()).toEqual({ milestones: [], earnings: [] });
+    expect(await realm.tick()).toEqual({ milestones: [], earnings: [], tasks: [] });
     // El saldo se sigue pudiendo consultar.
     expect(realm.economy?.balance("x")).toBe(0);
 

@@ -17,6 +17,8 @@ import type { TextPart } from "./core/rcon.js";
 import { MAX_PENDING_PER_USER } from "./core/reminders.js";
 import { describeClock, readWeather, readWorldClock } from "./core/sky.js";
 import { describeWeather } from "./commands/cielo.js";
+import { taskName } from "./commands/tareas.js";
+import { TASK_REWARD } from "./core/tasks.js";
 import { parseWhen } from "./core/when.js";
 import { formatCount } from "./util/format.js";
 import { gameDate, gameReply } from "./util/game.js";
@@ -66,10 +68,10 @@ export function helpMessage(): TextPart[] {
     { text: `${mark}${g.helpTitle}`, color: "yellow" },
   ];
   for (const item of g.helpItems) {
+    // La ⚔ va en el mismo trozo que el comando (ocupa menos: RCON tiene límite de tamaño).
     parts.push(
       { br: true },
-      { text: `  ${g.welcomeMark}`, color: "gold" },
-      { text: item.cmd, color: "aqua", suggest: `${item.cmd} `, ...(item.usage !== item.cmd ? { hover: item.usage } : {}) },
+      { text: `  ${g.welcomeMark}${item.cmd}`, color: "aqua", suggest: `${item.cmd} `, ...(item.usage !== item.cmd ? { hover: item.usage } : {}) },
       { text: ` — ${item.desc}`, color: "gray" },
     );
   }
@@ -163,6 +165,9 @@ export class GameChat {
     }
 
     switch (cmd.name) {
+      case "tareas":
+        await this.ctx.rcon.tellraw(player, await this.tasksMessage(uuid)).catch(() => undefined);
+        return;
       case "tesoro": {
         const economy = this.ctx.realm.economy;
         await this.reply(player, economy ? g.balance(formatCount(economy.balance(uuid))) : g.noEconomy);
@@ -177,6 +182,26 @@ export class GameChat {
       default:
         await this.reply(player, g.unknown(cmd.name.slice(0, 20)));
     }
+  }
+
+  /** !tareas: las tres misiones de hoy con el progreso de quien pregunta. */
+  private async tasksMessage(uuid: string): Promise<TextPart[]> {
+    const parts: TextPart[] = [{ text: g.prefix, color: "gold", bold: true }];
+    const daily = this.ctx.realm.tasks;
+    const record = daily ? (await this.ctx.world.players().catch(() => [])).find((p) => p.uuid === uuid) : undefined;
+    if (!daily || !record) return [...parts, { text: texts.tareas.unavailable, color: "gray" }];
+    parts.push({ text: texts.tareas.gameTitle, color: "yellow" });
+    for (const p of daily.progressFor(record)) {
+      const mark = p.done ? "✔ " : `${Math.floor(p.progress)}/${p.task.target} `;
+      parts.push(
+        { br: true },
+        { text: `  ${mark}`, color: p.done ? "green" : "gold" },
+        { text: `${taskName(p.task)} (+${TASK_REWARD[p.task.tier]})`, color: p.done ? "dark_gray" : "gray" },
+      );
+    }
+    const streak = daily.streakOf(uuid);
+    if (streak) parts.push({ br: true }, { text: `  🔥 ${streak.current}`, color: "gold" });
+    return parts;
   }
 
   /** !cielo: hora, día, luna y clima en un solo mensaje (para todos, como !ayuda). */
