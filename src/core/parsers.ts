@@ -96,6 +96,13 @@ export function parseTickQuery(response: string): TickInfo {
 
 // ---------------------------------------------------------------- version
 
+/** "Clock minecraft:overworld is at 4017 tick(s)" (26.2) → 4017. */
+export function parseTimeQuery(response: string): number {
+  const m = /is at (\d+) tick/.exec(response);
+  if (!m) throw new RconParseError("time query", response);
+  return Number(m[1]);
+}
+
 export interface VersionInfo {
   /** Nombre de la versión, p. ej. "26.2". */
   name: string;

@@ -4,6 +4,7 @@
  */
 import type { AdvancementKind } from "../core/logwatch.js";
 import type { BackupStatus } from "../core/backups.js";
+import type { DayPeriod } from "../core/sky.js";
 import type { EarnCategory } from "../core/economy.js";
 import type { MetricId } from "../core/metrics.js";
 import type { MilestoneId } from "../core/milestones.js";
@@ -121,6 +122,29 @@ export const texts = {
       swim: { emoji: "🧜", label: "Sirena", hint: "Distancia nadando o caminando bajo el agua." },
       bells: { emoji: "🔔", label: "Campanero", hint: "Campanas tocadas. Dong." },
     } satisfies Record<MetricId, { emoji: string; label: string; hint?: string }>,
+  },
+
+  // /cielo
+  cielo: {
+    title: "🌌 El cielo del reino",
+    time: "🕰️ Hora",
+    period: { dawn: "🌅 Amanecer", day: "☀️ Día", dusk: "🌇 Atardecer", night: "🌙 Noche" } satisfies Record<DayPeriod, string>,
+    day: "📅 Día",
+    dayValue: (n: string) => `**${n}** del reino`,
+    moon: "🌙 Luna",
+    moonNames: ["Luna llena", "Gibosa menguante", "Cuarto menguante", "Luna menguante", "Luna nueva", "Luna creciente", "Cuarto creciente", "Gibosa creciente"],
+    moonHint: ["Noche de luna llena: los slimes salen en masa en los pantanos.", null, null, null, "Luna nueva: la noche más oscura. Antorchas a mano.", null, null, null],
+    weather: "🌦️ Clima",
+    clear: "☀️ Despejado",
+    rain: "🌧️ Lluvia",
+    thunder: "⛈️ Tormenta",
+    rainEnds: (m: string) => `parará en ~${m} min`,
+    rainStarts: (m: string) => `lloverá en ~${m} min`,
+    clearForced: (m: string) => `despejado a la fuerza ~${m} min más`,
+    paused: "⏸️ **El tiempo está detenido**: no hay nadie en el reino, así que ni el sol ni las nubes se mueven.",
+    staleClock: "-# Hora según el último guardado del mundo (RCON no responde).",
+    note: "-# Minutos de juego (con alguien conectado). El clima, según el último guardado del mundo.",
+    unavailable: "Los astros no se dejan leer ahora mismo.",
   },
 
   // /hel

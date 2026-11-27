@@ -10,7 +10,7 @@ describe("imágenes de assets/", () => {
     expect(data.length).toBeLessThan(8 * 1024 * 1024); // límite de Discord
   });
 
-  it.each(["runas.png", "quedada.png", "panel-ok.png", "panel-empty.png", "panel-lag.png", "panel-down.png"])("%s es un PNG", (name) => {
+  it.each(["runas.png", "quedada.png", "panel-ok.png", "panel-empty.png", "panel-lag.png", "panel-down.png", ...Array.from({ length: 8 }, (_, i) => `luna-${i}.png`)])("%s es un PNG", (name) => {
     expect(existsSync(`assets/${name}`)).toBe(true);
     expect(readFileSync(`assets/${name}`).subarray(1, 4).toString()).toBe("PNG");
   });

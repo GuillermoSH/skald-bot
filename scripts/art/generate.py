@@ -976,6 +976,31 @@ def einherjar(c: Px, f: int) -> None:
     title(c, "EINHERJAR", 2)
 
 
+MOON_SIZE = 40
+
+
+def moon_phase(phase: int) -> Image.Image:
+    """Fase lunar como en Minecraft: 0 llena, 4 nueva; 1-3 menguante (luz a la izquierda), 5-7 creciente."""
+    c = Px(MOON_SIZE, MOON_SIZE, fill="sky1")
+    stars(c, MOON_SIZE + 10, 3, seed=200 + phase, count=14)
+    cx = cy = MOON_SIZE / 2
+    r = 14
+    moon(c, cx, cy, r)
+    k = math.cos(2 * math.pi * phase / 8)
+    waning = 1 <= phase <= 3
+    for y in range(int(cy - r - 1), int(cy + r + 2)):
+        for x in range(int(cx - r - 1), int(cx + r + 2)):
+            dx, dy = (x - cx) / r, (y - cy) / r
+            if dx * dx + dy * dy > 1:
+                continue
+            w = math.sqrt(max(0.0, 1 - dy * dy))
+            side = -dx if waning else dx
+            lit = side > -k * w if phase not in (0, 4) else phase == 0
+            if not lit:
+                c.p(x, y, "sky3" if (x + y) % 2 else "sky2")
+    return c.export()
+
+
 # ----------------------------------------------------------------------------- salida
 
 def save_gif(name: str, imgs: list[Image.Image], ms: int) -> None:
@@ -1012,6 +1037,12 @@ def main() -> None:
             img.convert("RGB").save(Path(preview) / f"panel-{state}.png")
     hero_frames = frames(einherjar, W, 75)
     save_gif("einherjar.gif", hero_frames, 100)
+    for phase in range(8):
+        img = moon_phase(phase)
+        img.save(OUT / f"luna-{phase}.png", optimize=True)
+        if preview:
+            img.convert("RGB").save(Path(preview) / f"luna-{phase}.png")
+    print("luna-0..7.png:", f"{MOON_SIZE * SCALE}x{MOON_SIZE * SCALE}")
     clock_frames = frames(hourglass, CLOCK, CLOCK)
     save_gif("reloj.gif", clock_frames, 120)
     banner = rules_banner()

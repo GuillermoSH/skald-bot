@@ -1,5 +1,5 @@
 import { Rcon } from "rcon-client";
-import { parseList, parseTickQuery, parseVersion, type PlayerList, type TickInfo, type VersionInfo } from "./parsers.js";
+import { parseList, parseTickQuery, parseTimeQuery, parseVersion, type PlayerList, type TickInfo, type VersionInfo } from "./parsers.js";
 
 /**
  * LISTA CERRADA de comandos RCON que el bot puede enviar.
@@ -14,7 +14,7 @@ import { parseList, parseTickQuery, parseVersion, type PlayerList, type TickInfo
  * componente JSON generado con JSON.stringify (el servidor rechaza cualquier
  * cosa que vaya detrás, así que no se puede colar otro comando).
  */
-const ALLOWED_COMMANDS = ["list", "tick query", "version"] as const;
+const ALLOWED_COMMANDS = ["list", "tick query", "version", "time query time"] as const;
 type AllowedCommand = (typeof ALLOWED_COMMANDS)[number];
 
 // ---- tellraw (plantilla cerrada)
@@ -134,6 +134,12 @@ export class RconClient {
   async queryVersion(): Promise<VersionInfo> {
     const [version] = await this.send(["version"]);
     return parseVersion(version);
+  }
+
+  /** Reloj del overworld (ticks totales; tick 0 = 6:00 del día 1). */
+  async queryTime(): Promise<number> {
+    const [time] = await this.send(["time query time"]);
+    return parseTimeQuery(time);
   }
 
   /** Sonido para un jugador, con la plantilla cerrada. */

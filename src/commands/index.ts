@@ -1,4 +1,5 @@
 import { createAyuda } from "./ayuda.js";
+import { cielo } from "./cielo.js";
 import { cronica } from "./cronica.js";
 import { duelo } from "./duelo.js";
 import { gestas } from "./gestas.js";
@@ -21,6 +22,7 @@ import type { Command } from "./types.js";
 export const commands: readonly Command[] = [
   reino,
   guerreros,
+  cielo,
   gestas,
   cronica,
   duelo,

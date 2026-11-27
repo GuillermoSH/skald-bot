@@ -12,6 +12,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 |---|---|
 | `/reino` | Estado del reino: jugadores, TPS, tiempo por tick, latencia y versión |
 | `/guerreros` | Quién está conectado ahora mismo |
+| `/cielo` | El cielo del reino: hora, día del mundo, fase de la luna (con su dibujo) y clima, con cuándo cambia |
 | `/gestas <categoría>` | Rankings: tiempo jugado, muertes, mobs, distancia… y otros menos serios (pasto de creepers, muertes tontas, lanzahuevos, rage quit…) |
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia, primeros del reino y últimos logros |
 | `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
@@ -150,7 +151,7 @@ Con `COMMAND_CHANNEL_IDS`, Skald solo responde a los comandos en esos canales (y
 ## Diseño y seguridad
 
 - **Solo lectura.** Skald consulta, no administra. Las estadísticas salen de los ficheros del mundo (`players/stats` y `players/advancements`), montados en solo lectura. Lo que recuerda (temporadas, primeros del reino, hitos, monedas) lo guarda en una base de datos SQLite (`node:sqlite`, sin dependencias nativas) en `STATE_DIR` (en Docker, la carpeta `state/` junto al compose), con una copia diaria en `STATE_DIR/backups` (se guardan 7); la configuración rechaza que esté dentro del mundo. Esa carpeta no la cubren las copias del servidor de Minecraft: conviene incluirla en una copia fuera de la máquina.
-- **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`, y `tellraw` y `playsound` con plantillas cerradas si el chat del juego está activo). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
+- **Lista cerrada de comandos RCON** (`list`, `tick query`, `version`, `time query time`, y `tellraw` y `playsound` con plantillas cerradas si el chat del juego está activo). El cliente RCON no expone ninguna forma de enviar texto arbitrario, así que nada de lo que se escriba en Discord llega a la consola del servidor.
 - **Sin menciones.** Todas las respuestas se envían con `allowedMentions: { parse: [] }`, y el texto que viene del servidor (MOTD, nombres) se escapa.
 - **Configuración validada al arrancar.** Si falta una variable obligatoria, el bot no arranca, y los errores nunca muestran valores (pueden ser secretos).
 - **Separación núcleo / temática.** `src/core/` habla con el servidor y no sabe nada de Discord ni del tono; los textos están en `src/util/texts.ts`.
