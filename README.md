@@ -16,7 +16,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
 | `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
 | `/hel [guerrero]` | Qué mata más en el reino (o a un guerrero): causas de muerte de todos los logs, Valhalla contra Hel |
-| `/tesoro [guerrero]` | Monedas de plata: los cofres más llenos, o el de un guerrero con lo ganado hoy (si la economía está activada) |
+| `/tesoro [guerrero]` | Monedas de plata: los cofres más llenos (y el tuyo, con tu puesto, si estás unido al reino), o el de un guerrero con lo ganado hoy |
 | `/temporada actual \| historial \| nueva` | Las eras del reino (una por mundo): la actual, las pasadas con sus campeones y, solo para administradores, abrir una nueva |
 | `/quedada <titulo> <cuando> [horas] [detalles]` | Crea un evento de Discord («Minecraft · era actual»), lo anuncia en el canal y avisa a los interesados 30 min antes |
 | `/encuesta <pregunta> <opcion1> <opcion2> … [horas] [varias]` | Encuesta nativa de Discord (hasta 8 opciones); al cerrar, Discord publica el resultado |
@@ -71,6 +71,10 @@ Skald también hace de heraldo, sin bots de terceros:
 - 📜 **Mensaje de normas** (las «runas») en su canal: normas, guía de canales y cómo entrar al servidor de Minecraft. Si el texto cambia en `src/util/texts.ts`, al desplegar Skald **edita su propio mensaje** en vez de publicar otro.
 
 Necesita el *Server Members Intent* activado en el portal de desarrolladores (pestaña *Bot*). Skald solo lo pide si hay algo del heraldo configurado. Para el rol automático hace falta «Gestionar roles», y que el rol de Skald esté por encima del que va a dar. Para editar las normas, «Leer el historial de mensajes» en ese canal. Conviene desactivar los mensajes del sistema de Discord para que no salgan duplicados.
+
+### Aviso de lag
+
+Con `ADMIN_CHANNEL_ID`, Skald consulta los TPS cada minuto y avisa en ese canal si el servidor lleva unos minutos por debajo de 15 TPS (no por un pico suelto), con una pista para buscar la causa con spark; y otra vez cuando se recupera. No avisa de caídas (para eso está la monitorización) ni de `/tick freeze` o `/tick sprint`.
 
 ### Temporadas (eras)
 

@@ -58,7 +58,14 @@ export const tesoro: Command = {
     const lines = top.map((e, i) =>
       t.line(texts.gestas.medals[i] ?? `${i + 1}.`, safeText(resolved.get(e.uuid) ?? texts.unknownWarrior(e.uuid), 32), formatCount(e.balance)),
     );
-    const description = lines.length > 0 ? [...lines, "", t.note].join("\n") : t.empty;
+    // Si quien pregunta está unido al reino, su cofre debajo del ranking.
+    const link = ctx.realm.links?.byDiscord(interaction.user.id);
+    const yours = link
+      ? t.yours(safeText(link.mcName, 16), formatCount(economy.balance(link.uuid)), economy.rankOf(link.uuid))
+      : null;
+    const description = [lines.length > 0 ? lines.join("\n") : t.empty, yours ? `\n${yours}` : null, `\n${t.note}`]
+      .filter((l) => l !== null)
+      .join("\n");
     const embed = baseEmbed().setTitle(t.title).setDescription(description);
     const image = asset("tesoro.gif");
     if (image) embed.setImage(image.url);

@@ -121,3 +121,14 @@ describe("regalo inicial", () => {
     ]);
   });
 });
+
+describe("puesto en el ranking", () => {
+  it("1 = el más rico; sin monedas, sin puesto", () => {
+    const e = economy();
+    e.tick([p("a", {}), p("b", {}), p("c", {})], T0);
+    e.tick([p("a", { kills: 50 }), p("b", { kills: 10 }), p("c", {})], later(5));
+    expect(e.rankOf("a")).toBe(1);
+    expect(e.rankOf("b")).toBe(2);
+    expect(e.rankOf("c")).toBeNull();
+  });
+});

@@ -233,6 +233,17 @@ export class Economy {
     return out;
   }
 
+  /** Puesto en el ranking (1 = el más rico), o null si no tiene monedas. */
+  rankOf(uuid: string): number | null {
+    const mine = this.balance(uuid);
+    if (mine <= 0) return null;
+    const above = this.db.get<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM (SELECT uuid, SUM(amount) AS b FROM ledger GROUP BY uuid HAVING b > ?)",
+      mine,
+    );
+    return (above?.n ?? 0) + 1;
+  }
+
   /** Los más ricos (saldo total, de todas las temporadas). */
   top(limit = 10): { uuid: string; balance: number }[] {
     return this.db.all<{ uuid: string; balance: number }>(
