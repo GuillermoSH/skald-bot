@@ -28,7 +28,7 @@ const YEAR_MS = 366 * 86_400_000;
 /** Espera tras entrar (para que el chat del jugador ya esté cargado). */
 const WELCOME_DELAY_MS = 3_000;
 /** No se vuelve a saludar a quien entró hace poco (reconexiones). */
-const WELCOME_COOLDOWN_MS = 10 * 60_000;
+const WELCOME_COOLDOWN_MS = 5 * 60_000;
 
 /** "!recordar 2h | regar" → { name: "recordar", args: "2h | regar" }. */
 export function parseGameCommand(message: string): { name: string; args: string } | null {
