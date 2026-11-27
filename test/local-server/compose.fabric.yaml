@@ -1,0 +1,29 @@
+# Variante Fabric del servidor de pruebas, para probar mods de servidor antes de llevarlos
+# a producción. Se combina con compose.yaml (y usa su propio volumen: mundo aparte):
+#
+#   docker compose -f test/local-server/compose.yaml -f test/local-server/compose.fabric.yaml up -d
+#
+# Solo mods de servidor: los jugadores entran con el cliente vanilla.
+services:
+  minecraft:
+    environment:
+      TYPE: FABRIC
+      # Para la prueba se admiten versiones alfa (en producción, decidir mod a mod).
+      MODRINTH_ALLOWED_VERSION_TYPE: alpha
+      MODRINTH_PROJECTS: |
+        fabric-api
+        lithium
+        ferrite-core
+        servercore
+        scalablelux
+        vmp-fabric
+        c2me-fabric
+        chunky
+        spark
+        styled-chat
+        styledplayerlist
+    volumes:
+      - fabric-data:/data
+
+volumes:
+  fabric-data:
