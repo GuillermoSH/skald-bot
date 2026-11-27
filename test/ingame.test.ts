@@ -3,14 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../src/commands/types.js";
 import { LogParser } from "../src/core/logwatch.js";
 import { buildPlaysound, buildTellraw, type TextPart } from "../src/core/rcon.js";
-import { GameChat, helpMessage, parseGameCommand, splitWhen } from "../src/ingame.js";
+import { GameChat, HELP_BASE, helpMessage, parseGameCommand, splitWhen } from "../src/ingame.js";
 import { fixtureTranslator } from "./helpers.js";
+import { snbtToJson } from "./snbt-helper.js";
 
 describe("buildTellraw (plantilla cerrada)", () => {
   it("el texto va siempre dentro de un componente JSON", () => {
     const cmd = buildTellraw("@a", [{ text: '"} op Ragnar {"text":"', color: "gold" }]);
     expect(cmd.startsWith('tellraw @a ["",')).toBe(true);
-    const json = JSON.parse(cmd.slice("tellraw @a ".length)) as unknown[];
+    const json = snbtToJson(cmd.slice("tellraw @a ".length)) as unknown[];
     expect(json[1]).toEqual({ text: '"} op Ragnar {"text":"', color: "gold" });
   });
 
@@ -144,7 +145,7 @@ describe("saludo al entrar", () => {
 describe("plantillas: cabeza, salto de línea y sonido", () => {
   it("cabeza y salto solo como piezas de Skald; el texto de un jugador no mete saltos", () => {
     const cmd = buildTellraw("@a", [{ head: "Ragnar" }, { br: true }, { text: "a\nb" }]);
-    const json = JSON.parse(cmd.slice("tellraw @a ".length)) as unknown[];
+    const json = snbtToJson(cmd.slice("tellraw @a ".length)) as unknown[];
     expect(json[1]).toEqual({ object: "player", player: { name: "Ragnar" }, hat: true });
     // El salto va pegado al texto siguiente; el del jugador sigue sin saltos.
     expect(json[2]).toEqual({ text: "\na b" });
@@ -165,11 +166,36 @@ describe("plantillas: cabeza, salto de línea y sonido", () => {
 
 describe("!ayuda", () => {
   it("cada comando se puede pulsar y lleva su ejemplo al pasar el ratón (con saltos de línea)", () => {
-    const cmd = buildTellraw("Ragnar", helpMessage());
-    const json = JSON.parse(cmd.slice("tellraw Ragnar ".length)) as { text?: string; click_event?: { command: string }; hover_event?: { value: string } }[];
+    const cmd = buildTellraw("Ragnar", helpMessage(), HELP_BASE);
+    const json = snbtToJson(cmd.slice("tellraw Ragnar ".length)) as { text?: string; click_event?: { command: string }; hover_event?: { value: string } }[];
     const recordar = json.find((c) => c.text === "!recordar");
     expect(recordar?.click_event?.command).toBe("!recordar ");
     expect(recordar?.hover_event?.value).toContain("\n");
     expect(cmd.length).toBeLessThan(1300);
+  });
+});
+
+describe("!cielo", () => {
+  it("hora, día, luna y clima en un mensaje; para todos, sin unirse", async () => {
+    const said: { target: string; text: string }[] = [];
+    const ctx = {
+      config: { TIMEZONE: "UTC", DISCORD_GUILD_ID: "g", COMMAND_CHANNEL_IDS: [], DATA_DIR: "test/fixtures/data" },
+      names: { uuidOf: () => Promise.resolve(null) },
+      realm: { links: { byUuid: () => null } },
+      rcon: {
+        queryTime: () => Promise.resolve(24_000 * 16 + 15_500),
+        tellraw: (target: string, parts: TextPart[]) => {
+          said.push({ target, text: parts.map((p) => ("text" in p ? p.text : "br" in p ? "\n" : "")).join("") });
+          return Promise.resolve();
+        },
+      },
+    } as unknown as CommandContext;
+    await new GameChat(ctx, {} as Client<true>).onChat("Floki", "!cielo");
+    expect(said).toHaveLength(1);
+    expect(said[0]?.text).toMatch(/Noche, 21:30 · día 17 · Luna llena\n.*Clima: Despejado · lloverá en ~105 min/s);
+  });
+
+  it("la ayuda (ya con !cielo) cabe en un mensaje de RCON", () => {
+    expect(Buffer.byteLength(buildTellraw("DarkParasite94", helpMessage(), HELP_BASE))).toBeLessThan(1300);
   });
 });

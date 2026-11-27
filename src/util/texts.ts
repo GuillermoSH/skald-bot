@@ -313,13 +313,20 @@ export const texts = {
     quedadaSoon: (title: string) => `La quedada «${title}» empieza en 30 minutos. ¡Al salón, guerreros!`,
     // !ayuda: un solo mensaje; cada comando se puede pulsar y enseña su uso al pasar el ratón.
     helpTitle: "Lo que sé hacer en el juego:",
-    helpFooter: "Ratón encima: ejemplo. Clic: escribirlo.",
+    helpFooter: "Ratón: ejemplo. Clic: escribirlo.",
     helpItems: [
       { cmd: "!recordar", desc: "te lo recuerdo en Discord", usage: "!recordar 2h | regar\n(30m, 2h, mañana 18:00, 24/12 21:30)" },
       { cmd: "!quedada", desc: "evento en Discord", usage: "!quedada 24/12 21:30 | Asalto al Nether" },
       { cmd: "!encuesta", desc: "encuesta en Discord", usage: "!encuesta ¿Nether o End? | Nether | End" },
       { cmd: "!tesoro", desc: "tus monedas de plata", usage: "!tesoro" },
+      { cmd: "!cielo", desc: "hora, luna y clima", usage: "!cielo" },
     ],
+    // !cielo (texto plano para el chat del juego)
+    skyPeriod: { dawn: "Amanecer", day: "Día", dusk: "Atardecer", night: "Noche" } satisfies Record<DayPeriod, string>,
+    skyLine: (period: string, time: string, day: string, moon: string) => `${period}, ${time} · día ${day} · ${moon}`,
+    skyWeather: (w: string) => `Clima: ${w}`,
+    skyPaused: "El tiempo está detenido (no hay nadie).",
+    skyUnknown: "Los astros no se dejan leer ahora mismo.",
     notLinked: "Primero únete al reino en Discord: pulsa «Acepto las runas» en #runas.",
     // Saludo al entrar al servidor (solo lo ve quien entra).
     welcome: [

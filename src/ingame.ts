@@ -15,6 +15,8 @@ import { createQuedada } from "./commands/quedada.js";
 import type { CommandContext } from "./commands/types.js";
 import type { TextPart } from "./core/rcon.js";
 import { MAX_PENDING_PER_USER } from "./core/reminders.js";
+import { describeClock, readWeather, readWorldClock } from "./core/sky.js";
+import { describeWeather } from "./commands/cielo.js";
 import { parseWhen } from "./core/when.js";
 import { formatCount } from "./util/format.js";
 import { gameDate, gameReply } from "./util/game.js";
@@ -52,6 +54,9 @@ export function splitWhen(args: string, now: Date, timeZone: string): { at: Date
   }
   return null;
 }
+
+/** Color base de la ayuda (lo heredan las descripciones). */
+export const HELP_BASE = "gray" as const;
 
 /** !ayuda en un solo mensaje: cada comando se pulsa (queda escrito) y enseña su uso al pasar el ratón. */
 export function helpMessage(): TextPart[] {
@@ -135,8 +140,15 @@ export class GameChat {
     this.lastCommand.set(player, now);
     log.info(`!${cmd.name} por ${player} (juego)`);
 
+    if (cmd.name === "cielo") {
+      await this.ctx.rcon.tellraw(player, await this.skyMessage()).catch((error: unknown) => {
+        log.warn(`No se pudo enseñar el cielo a ${player}: ${error instanceof Error ? error.message : String(error)}`);
+      });
+      return;
+    }
+
     if (cmd.name === "ayuda" || cmd.name === "help") {
-      await this.ctx.rcon.tellraw(player, helpMessage()).catch((error: unknown) => {
+      await this.ctx.rcon.tellraw(player, helpMessage(), HELP_BASE).catch((error: unknown) => {
         log.warn(`No se pudo enseñar la ayuda a ${player}: ${error instanceof Error ? error.message : String(error)}`);
       });
       return;
@@ -165,6 +177,30 @@ export class GameChat {
       default:
         await this.reply(player, g.unknown(cmd.name.slice(0, 20)));
     }
+  }
+
+  /** !cielo: hora, día, luna y clima en un solo mensaje (para todos, como !ayuda). */
+  private async skyMessage(): Promise<TextPart[]> {
+    const { config, rcon } = this.ctx;
+    const [ticks, weather] = await Promise.all([
+      rcon.queryTime().catch(() => readWorldClock(config.DATA_DIR).catch(() => null)),
+      readWeather(config.DATA_DIR).catch(() => null),
+    ]);
+    const parts: TextPart[] = [{ text: g.prefix, color: "gold", bold: true }];
+    if (ticks === null) return [...parts, { text: g.skyUnknown, color: "gray" }];
+    const c = describeClock(ticks);
+    const time = `${String(c.hour).padStart(2, "0")}:${String(c.minute).padStart(2, "0")}`;
+    const moon = texts.cielo.moonNames[c.moonPhase] ?? "?";
+    parts.push(
+      { text: c.period === "night" || c.period === "dusk" ? "☽ " : "☀ ", color: "gold" },
+      { text: g.skyLine(g.skyPeriod[c.period], time, formatCount(c.day), moon), color: "yellow" },
+    );
+    if (weather) {
+      // El mismo texto que /cielo, sin emojis de Discord (en el juego no salen).
+      const plain = describeWeather(weather).replace(/[^\p{L}\p{N}\s·~,.()-]/gu, "").replace(/\s+/g, " ").trim();
+      parts.push({ br: true }, { text: "  ", color: "gold" }, { text: g.skyWeather(plain), color: "gray" });
+    }
+    return parts;
   }
 
   private async remind(player: string, discordId: string, args: string): Promise<void> {

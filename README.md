@@ -128,6 +128,7 @@ Con `GAME_CHAT_ENABLED=true`, Skald también habla y escucha en el chat de Minec
 |---|---|
 | `!ayuda` | Lista de comandos |
 | `!tesoro` | Tus monedas de plata |
+| `!cielo` | Hora, día, fase de la luna y clima (también sin unirse al reino) |
 | `!recordar <cuándo> \| <texto>` | Recordatorio por Discord (también sin barra: `!recordar 2h regar`) |
 | `!quedada <cuándo> \| <título>` | Crea la quedada en Discord, como `/quedada` |
 | `!encuesta <pregunta> \| <opción> \| <opción>…` | Encuesta en Discord |

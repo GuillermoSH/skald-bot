@@ -12,7 +12,8 @@ import { parseList, parseTickQuery, parseTimeQuery, parseVersion, type PlayerLis
  * `playsound` (`buildPlaysound`, solo sonidos de GAME_SOUNDS y a un jugador). En `tellraw`:
  * el destino es `@a` o un nombre válido, y el texto va siempre dentro de un
  * componente JSON generado con JSON.stringify (el servidor rechaza cualquier
- * cosa que vaya detrás, así que no se puede colar otro comando).
+ * cosa que vaya detrás, así que no se puede colar otro comando). Se escribe en SNBT compacto
+ * (`toSnbt`): campos sin comillas y textos con las comillas y escapes de JSON.
  */
 const ALLOWED_COMMANDS = ["list", "tick query", "version", "time query time"] as const;
 type AllowedCommand = (typeof ALLOWED_COMMANDS)[number];
@@ -48,13 +49,33 @@ function cleanText(text: string, keepNewlines = false): string {
   return cleaned;
 }
 
+/**
+ * Serializa un componente en SNBT compacto: los nombres de campo (siempre nuestros, de
+ * letras y guiones bajos) sin comillas, y los textos con JSON.stringify (comillas y
+ * escapes válidos también en SNBT). Ocupa menos que JSON y la 26.2 lo acepta igual.
+ */
+export function toSnbt(value: unknown): string {
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (Array.isArray(value)) return `[${value.map(toSnbt).join(",")}]`;
+  if (value && typeof value === "object") {
+    const fields = Object.entries(value).map(([k, v]) => {
+      if (!/^[a-z_]+$/.test(k)) throw new Error(`Campo no válido en tellraw: ${k}`);
+      return `${k}:${toSnbt(v)}`;
+    });
+    return `{${fields.join(",")}}`;
+  }
+  throw new Error("Valor no válido en tellraw");
+}
+
 function headComponent(name: string): Record<string, unknown> {
   if (!PLAYER_RE.test(name)) throw new Error("Nombre de jugador no válido");
   return { object: "player", player: { name }, hat: true };
 }
 
 /** Construye el comando `tellraw` (lanza si el destino no es válido). */
-export function buildTellraw(target: string, parts: readonly TextPart[]): string {
+export function buildTellraw(target: string, parts: readonly TextPart[], base?: TextColor): string {
   if (target !== "@a" && !PLAYER_RE.test(target)) throw new Error("Destino de tellraw no válido");
   let budget = 600; // caracteres de texto como mucho
   // Un salto de línea seguido de texto va en el mismo componente (ocupa menos).
@@ -73,7 +94,8 @@ export function buildTellraw(target: string, parts: readonly TextPart[]): string
     budget -= text.length;
     return [{
       text: lead + text,
-      ...(p.color ? { color: p.color } : {}),
+      // El color del mensaje lo heredan los trozos que no dicen otro (ocupa menos).
+      ...(p.color && p.color !== base ? { color: p.color } : {}),
       ...(p.bold ? { bold: true } : {}),
       ...(p.italic ? { italic: true } : {}),
       // En el texto emergente sí se permiten saltos de línea (lo escribe Skald, no un jugador).
@@ -83,7 +105,8 @@ export function buildTellraw(target: string, parts: readonly TextPart[]): string
     }];
   });
   if (state.pendingBreak) components.push({ text: "\n" });
-  const command = `tellraw ${target} ${JSON.stringify(["", ...components])}`;
+  const root = base ? { text: "", color: base } : "";
+  const command = `tellraw ${target} ${toSnbt([root, ...components])}`;
   if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) throw new Error("Mensaje de tellraw demasiado largo");
   return command;
 }
@@ -148,8 +171,8 @@ export class RconClient {
   }
 
   /** Mensaje en el chat del juego (a todos o a un jugador), con la plantilla cerrada. */
-  async tellraw(target: "@a" | (string & {}), parts: readonly TextPart[]): Promise<void> {
-    await this.exec([buildTellraw(target, parts)]);
+  async tellraw(target: "@a" | (string & {}), parts: readonly TextPart[], base?: TextColor): Promise<void> {
+    await this.exec([buildTellraw(target, parts, base)]);
   }
 
   /**
