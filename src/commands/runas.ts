@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import { detectAdapter } from "../adapters/index.js";
+import { detectAdapter, scanServerFiles } from "../adapters/index.js";
 import { RconParseError } from "../core/parsers.js";
 import { RconUnavailableError } from "../core/rcon.js";
 import { getServerStatus } from "../core/status.js";
@@ -34,13 +34,18 @@ export const runas: Command = {
 
     const f = texts.runesFields;
     const versionName = version?.name ?? (status.online ? status.version : "?");
-    const adapter = detectAdapter({ versionName: status.online ? status.version : versionName });
+    const files = await scanServerFiles(config.DATA_DIR);
+    const input = { versionName: status.online ? status.version : versionName, dataFiles: files.dataFiles };
+    const adapter = detectAdapter(input);
     const embed = baseEmbed()
       .setTitle(texts.runesTitle)
       .addFields(
         { name: f.version, value: safeText(versionName, 64), inline: true },
-        { name: f.loader, value: adapter.displayName, inline: true },
+        { name: f.loader, value: safeText(adapter.describe?.(input) ?? adapter.displayName, 40), inline: true },
       );
+    if (adapter.id !== "vanilla") {
+      embed.addFields({ name: f.mods, value: files.modJars.length > 0 ? texts.runesMods(files.modJars.length) : texts.runesNoMods, inline: true });
+    }
 
     const protocol = version?.protocol ?? (status.online ? status.protocol : null);
     if (protocol !== null) embed.addFields({ name: f.protocol, value: String(protocol), inline: true });

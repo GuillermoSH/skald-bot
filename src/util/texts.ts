@@ -73,7 +73,10 @@ export const texts = {
     dataVersion: "Versión de datos",
     packs: "Formato de packs (recursos / datos)",
     build: "Compilado",
+    mods: "Mods",
   },
+  runesMods: (n: number) => `${n} (solo de servidor)`,
+  runesNoMods: "Ninguno",
   runesNoRcon: "_Las runas más hondas no se dejan leer (RCON no responde o el servidor no es vanilla)._",
 
   // /mapa
