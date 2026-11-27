@@ -1,0 +1,13 @@
+# Prueba de la «plantilla de mundo»: datapacks de Vanilla Tweaks y gamerules aplicados por
+# itzg al arrancar (sin tocar el mundo a mano). Se combina con compose.yaml y compose.fabric.yaml:
+#
+#   docker compose -f test/local-server/compose.yaml -f test/local-server/compose.fabric.yaml \
+#     -f test/local-server/compose.template.yaml up -d
+services:
+  minecraft:
+    environment:
+      VANILLATWEAKS_FILE: /extras/vanillatweaks.json
+      RCON_CMDS_STARTUP: |-
+        gamerule players_sleeping_percentage 50
+    volumes:
+      - ./vanillatweaks.json:/extras/vanillatweaks.json:ro

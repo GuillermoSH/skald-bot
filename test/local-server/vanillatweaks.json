@@ -1,0 +1,7 @@
+{
+  "type": "datapacks",
+  "version": "26.2",
+  "packs": {
+    "informative": ["afk display"]
+  }
+}
