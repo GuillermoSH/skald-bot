@@ -188,7 +188,24 @@ export class Translator {
     log.warn(`Sin ${what}, se usarán textos de respaldo: ${error instanceof Error ? error.message : String(error)}`);
   }
 
+  private english: LangTable = new Map();
+
+  /** Texto en inglés del jar (plantillas de comandos, nombres de modos…). */
+  englishText(key: string): string | undefined {
+    return this.english.get(key);
+  }
+
+  /** "Creative Mode" → "Modo creativo" (si no se conoce, igual). */
+  gameModeName(english: string): string {
+    for (const mode of ["survival", "creative", "adventure", "spectator"]) {
+      const key = `gameMode.${mode}`;
+      if (this.english.get(key) === english) return this.es.get(key) ?? english;
+    }
+    return english;
+  }
+
   private indexEnglish(en: LangTable): void {
+    this.english = en;
     const names = new Map<string, string>();
     const titles = new Map<string, string>();
     const patterns: DeathPattern[] = [];

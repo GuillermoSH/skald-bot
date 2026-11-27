@@ -77,6 +77,13 @@ Necesita el *Server Members Intent* activado en el portal de desarrolladores (pe
 
 Cada domingo a las 20:00 (hora de `TIMEZONE`), Skald publica en el canal de los logros un resumen de la semana: horas jugadas entre todos y quién más, el más fiero, el que más picó y más anduvo, las muertes y el más desgraciado, los logros nuevos y los primeros del reino, el más rico de la semana y un dato curioso. Para ello guarda una foto semanal de las estadísticas en su base de datos (la primera vez solo hace la foto). Si estaba apagado a esa hora, lo canta al volver; si la era está en pausa por un mundo nuevo, no canta.
 
+### Registro de administración
+
+Con `ADMIN_CHANNEL_ID`, Skald deja en ese canal un registro de lo importante, agrupado si pasan varias cosas seguidas:
+
+- **En el juego** (desde el log): cambios de modo de juego, op/deop, destierros y su levantamiento, expulsiones y lista blanca, con quién lo hizo (un jugador, la consola o RCON). Los textos se reconocen con las plantillas oficiales del juego. Nunca enseña los baneos de IP.
+- **En Discord**: los cambios de roles de un miembro, salvo los que hace Skald solo (rol de entrada y de jugador) y los que gestiona Discord (boost). Si Skald tiene el permiso *Ver registro de auditoría*, dice también quién los cambió. Necesita el intent de miembros (el mismo del heraldo).
+
 ### Aviso de lag
 
 Con `ADMIN_CHANNEL_ID`, Skald consulta los TPS cada minuto y avisa en ese canal si el servidor lleva unos minutos por debajo de 15 TPS (no por un pico suelto), con una pista para buscar la causa con spark; y otra vez cuando se recupera. No avisa de caídas (para eso está la monitorización) ni de `/tick freeze` o `/tick sprint`.

@@ -9,6 +9,7 @@
 import { open, stat } from "node:fs/promises";
 import path from "node:path";
 import { log } from "../util/log.js";
+import { AuditParser, type AuditMatch } from "./audit.js";
 import type { Translator } from "./lang.js";
 
 export type AdvancementKind = "task" | "challenge" | "goal";
@@ -41,6 +42,8 @@ export type LogEvent =
       /** Nadie en el reino lo tenía antes (lo decide quien recibe el evento). */
       first?: boolean;
     }
+  /** Acción de administración (modo de juego, op, ban, kick, whitelist). */
+  | { type: "admin"; at: Date; audit: AuditMatch }
   /** Mensaje de chat de un jugador (`<Nombre> texto`, con o sin «[Not Secure]»). */
   | { type: "chat"; at: Date; player: string; message: string }
   | { type: "server_start"; at: Date }
@@ -77,7 +80,15 @@ export class LogParser {
   /** Jugadores conectados según el propio log (para el detector de muertes de respaldo). */
   readonly online = new Set<string>();
 
+  private auditParser: AuditParser | null = null;
+
   constructor(private readonly lang: Translator) {}
+
+  /** Se crea al primer uso: para entonces los textos del jar ya están cargados. */
+  private get audit(): AuditParser {
+    this.auditParser ??= new AuditParser((key) => this.lang.englishText(key));
+    return this.auditParser;
+  }
 
   parse(line: string, now = new Date()): LogEvent | null {
     const m = LINE_RE.exec(line.trimEnd());
@@ -90,6 +101,9 @@ export class LogParser {
     if ((r = CHAT_RE.exec(message))) {
       return { type: "chat", at, player: r[1] ?? "", message: r[2] ?? "" };
     }
+    // Acciones de administración (antes de descartar las líneas entre corchetes).
+    const audit = this.audit.parse(message);
+    if (audit) return { type: "admin", at, audit };
     // Otras líneas con «<», salida de comandos y líneas con IP: nunca.
     if (message.startsWith("<") || message.startsWith("[") || message.includes("[/")) return null;
     if ((r = JOIN_RE.exec(message))) {

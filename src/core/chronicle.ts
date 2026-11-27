@@ -7,7 +7,7 @@ export class Chronicle {
   constructor(private readonly max = 200) {}
 
   add(event: LogEvent): void {
-    if (event.type === "chat") return; // el chat no forma parte de la crónica
+    if (event.type === "chat" || event.type === "admin") return; // no forman parte de la crónica
     this.events.push(event);
     if (this.events.length > this.max) this.events.splice(0, this.events.length - this.max);
   }

@@ -297,6 +297,26 @@ export const texts = {
     changed: "Último cambio",
   },
 
+  // Auditoría (canal de administración). {a} = quien lo hizo, {t} = a quién; ya en negrita.
+  audit: {
+    title: "🛡️ Registro del reino",
+    console: "la consola",
+    rcon: "la consola (RCON)",
+    gamemode_self: (a: string, mode: string) => `🎮 ${a} se ha puesto en **${mode}**.`,
+    gamemode_other: (a: string, t: string, mode: string) => `🎮 ${a} ha puesto a ${t} en **${mode}**.`,
+    op: (a: string, t: string) => `👑 ${a} ha hecho operador a ${t}.`,
+    deop: (a: string, t: string) => `👑 ${a} le ha quitado el operador a ${t}.`,
+    ban: (a: string, t: string, reason: string) => `🔨 ${a} ha desterrado a ${t}${reason ? `: «${reason}»` : ""}.`,
+    pardon: (a: string, t: string) => `🕊️ ${a} ha levantado el destierro de ${t}.`,
+    kick: (a: string, t: string, reason: string) => `👢 ${a} ha echado a ${t}${reason ? `: «${reason}»` : ""}.`,
+    whitelist_add: (a: string, t: string) => `📜 ${a} ha añadido a ${t} a la lista blanca.`,
+    whitelist_remove: (a: string, t: string) => `📜 ${a} ha quitado a ${t} de la lista blanca.`,
+    // Roles de Discord
+    rolesAdded: (member: string, roles: string) => `🏷️ ${member} recibe ${roles}`,
+    rolesRemoved: (member: string, roles: string) => `🏷️ ${member} pierde ${roles}`,
+    by: (executor: string) => ` (por ${executor})`,
+  },
+
   // Aviso de lag (canal de administración)
   lag: {
     alert: (tps: string, mspt: string) =>

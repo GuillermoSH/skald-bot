@@ -12,6 +12,7 @@ import {
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { AlertQueue, buildAlertRoutes } from "./alerts.js";
+import { AuditFeed, describeAudit, watchDiscordRoles } from "./audit.js";
 import { BackupWatcher } from "./backup-watch.js";
 import { isCommandChannelAllowed } from "./commands/guard.js";
 import { commandsByName } from "./commands/index.js";
@@ -103,6 +104,13 @@ function main(): void {
   };
 
   let alerts: AlertQueue | null = null;
+  // Registro de administración (se manda agrupado al canal de administración).
+  const auditFeed = new AuditFeed(async (title, lines) => {
+    if (!config.ADMIN_CHANNEL_ID || !client.isReady()) return;
+    adminChannel ??= fetchSendableChannel(client, config.ADMIN_CHANNEL_ID, "administración");
+    const channel = await adminChannel;
+    await channel?.send({ embeds: [baseEmbed().setTitle(title).setDescription(lines.join("\n"))], allowedMentions: { parse: [] } });
+  });
   let gameChat: GameChat | null = null;
   const watcher = new LogWatcher(config.DATA_DIR, ctx.lang, (event, live) => {
     if (live && event.type === "advancement" && event.key && realm.claimFirst(event.key, event.player, event.at)) {
@@ -111,6 +119,8 @@ function main(): void {
     }
     ctx.chronicle.add(event);
     if (live) alerts?.push(event);
+    // Acciones de administración del juego → registro en el canal de administración.
+    if (live && event.type === "admin") auditFeed.push(describeAudit(event.audit, ctx.lang));
     // Comandos con «!» desde el chat del juego.
     if (live && event.type === "chat" && gameChat) {
       void gameChat.onChat(event.player, event.message).catch((error: unknown) => {
@@ -195,6 +205,8 @@ function main(): void {
     void startLogWatch(ready);
     void startHerald(ready);
     void startBackupWatch(ready);
+    // Cambios de roles de Discord (necesita el intent de miembros, que pide el heraldo).
+    if (needsMembers && config.ADMIN_CHANNEL_ID) watchDiscordRoles(ready, config, auditFeed);
     startLagWatch();
   });
 
@@ -345,6 +357,7 @@ function main(): void {
     stopWeekly();
     if (inactivityTimer) clearInterval(inactivityTimer);
     if (lagTimer) clearInterval(lagTimer);
+    auditFeed.dispose();
     alerts?.dispose();
     realm.close();
     void client.destroy().finally(() => process.exit(0));

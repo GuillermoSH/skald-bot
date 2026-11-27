@@ -38,7 +38,8 @@ export function alertTypeOf(event: LogEvent): AlertEventType | null {
     case "server_stop":
       return "server";
     case "chat":
-      return null; // el chat no se avisa
+    case "admin":
+      return null; // el chat no se avisa; lo de administración va a su canal aparte
     default:
       return event.type;
   }
@@ -62,7 +63,8 @@ export class AlertFormatter {
       case "server_stop":
         return t.serverStop;
       case "chat":
-        return ""; // nunca se avisa (alertTypeOf lo descarta)
+      case "admin":
+        return ""; // nunca se avisa por aquí (alertTypeOf lo descarta)
       case "advancement":
         if (event.first) return `${t.first[event.kind](bold(event.player), safeText(event.title, 100))}\n${t.firstNote}`;
         return t.advancement[event.kind](bold(event.player), safeText(event.title, 100));
