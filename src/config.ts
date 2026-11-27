@@ -74,6 +74,8 @@ export const configSchema = discordSchema.extend({
   AUTO_ROLE_ID: snowflake.optional(),
   // Rol de quien juega (Einherjar): activa la unión al reino (botón en las runas).
   PLAYER_ROLE_ID: snowflake.optional(),
+  // Días sin entrar al servidor antes de volver a Viajero (0 = nunca). Solo con PLAYER_ROLE_ID.
+  INACTIVITY_DAYS: z.coerce.number().int().min(0).max(365).default(30),
   // Dirección del servidor de Minecraft que se enseña en las runas (opcional).
   MC_PUBLIC_ADDRESS: z.string().trim().min(1).max(100).optional(),
 

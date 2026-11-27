@@ -52,6 +52,10 @@ export function linkButtonRow(): ActionRowBuilder<ButtonBuilder> {
 
 export type AdminNotice = (message: string) => Promise<void>;
 
+/** Si nadie ha entrado en este tiempo, el servidor está parado: no se degrada a nadie. */
+const QUIET_SERVER_MS = 7 * 86_400_000;
+const MAX_INACTIVE_PER_RUN = 10;
+
 export class Linking {
   constructor(
     private readonly config: Config & { PLAYER_ROLE_ID: string },
@@ -204,22 +208,94 @@ export class Linking {
     const link = this.links.byUuid(uuid);
     if (!link) return;
     this.links.seen(uuid, playerName);
-    if (link.status !== "pending") return;
+    // Pendiente (primera vez) o inactivo (vuelve): pasa a Einherjar. Exiliado: nunca solo.
+    if (link.status !== "pending" && link.status !== "inactive") return;
+    const returning = link.status === "inactive";
 
     const guild = await client.guilds.fetch(this.config.DISCORD_GUILD_ID);
     if (!(await this.promote(guild, link.discordId))) return;
     this.links.activate(link.discordId);
-    log.info(`Einherjar: ${playerName} (${link.discordId})`);
-    await this.notify(t.adminPromoted(`<@${link.discordId}>`, safeText(playerName, 16)));
+    log.info(`Einherjar${returning ? " (vuelve)" : ""}: ${playerName} (${link.discordId})`);
+    const user = `<@${link.discordId}>`;
+    const name = safeText(playerName, 16);
+    await this.notify(returning ? t.adminReturned(user, name) : t.adminPromoted(user, name));
 
     const image = asset("einherjar.gif");
-    const embed = baseEmbed().setTitle(t.promotedTitle).setDescription(t.promotedBody(safeText(playerName, 16)));
+    const embed = baseEmbed()
+      .setTitle(returning ? t.returnTitle : t.promotedTitle)
+      .setDescription(returning ? t.returnBody(name) : t.promotedBody(name));
     if (image) embed.setImage(image.url);
     await client.users
       .send(link.discordId, { embeds: [embed], files: image ? [image.file] : [], allowedMentions: { parse: [] } })
       .catch(() => {
         log.debug(`No se pudo avisar por privado a ${link.discordId} de que es Einherjar`);
       });
+  }
+
+  /** Alguien ha salido del servidor: es su última conexión. */
+  async onPlayerLeave(playerName: string): Promise<void> {
+    const uuid = await this.names.uuidOf(playerName);
+    if (uuid) this.links.seen(uuid, playerName);
+  }
+
+  /**
+   * Inactividad: quien lleva `days` días sin entrar vuelve a Viajero (con un privado,
+   * una sola vez). Salvaguardas: si nadie ha entrado en una semana (servidor caído,
+   * vacaciones) no se toca a nadie, y como mucho `MAX_INACTIVE_PER_RUN` por pasada.
+   */
+  async checkInactivity(client: Client<true>, days: number, now = new Date()): Promise<number> {
+    if (days <= 0) return 0;
+    const players = await this.world.players().catch(() => []);
+    const savedAt = new Map(players.map((p) => [p.uuid.toLowerCase(), p.savedAt?.getTime() ?? 0]));
+    const lastActivity = (l: Link) => Math.max(l.lastSeen ? Date.parse(l.lastSeen) : 0, savedAt.get(l.uuid) ?? 0);
+
+    const latest = Math.max(this.links.latestSeen()?.getTime() ?? 0, ...savedAt.values());
+    if (now.getTime() - latest > QUIET_SERVER_MS) {
+      log.debug("Inactividad: nadie ha entrado en una semana; no se degrada a nadie");
+      return 0;
+    }
+
+    const limit = now.getTime() - days * 86_400_000;
+    const stale = this.links
+      .active()
+      .filter((l) => !this.config.ADMIN_USER_IDS.includes(l.discordId))
+      .filter((l) => {
+        const at = lastActivity(l);
+        return at > 0 && at < limit; // sin ningún dato, mejor no tocarlo
+      })
+      .slice(0, MAX_INACTIVE_PER_RUN);
+    if (stale.length === 0) return 0;
+
+    const guild = await client.guilds.fetch(this.config.DISCORD_GUILD_ID);
+    for (const link of stale) {
+      await this.demote(guild, link.discordId);
+      this.links.deactivate(link.discordId);
+      const user = `<@${link.discordId}>`;
+      const name = safeText(link.mcName, 16);
+      log.info(`Inactivo: ${link.mcName} (${link.discordId}) vuelve a Viajero`);
+      const image = asset("despedida.gif");
+      const embed = baseEmbed().setTitle(t.inactiveTitle).setDescription(t.inactiveBody(name, days));
+      if (image) embed.setImage(image.url);
+      const dm = await client.users
+        .send(link.discordId, { embeds: [embed], files: image ? [image.file] : [], allowedMentions: { parse: [] } })
+        .then(() => true)
+        .catch(() => false);
+      await this.notify(`${t.adminInactive(user, name, days)}${dm ? "" : `\n${t.adminInactiveNoDm(user)}`}`);
+    }
+    return stale.length;
+  }
+
+  /** Quita Einherjar y devuelve Viajero (si sigue en el servidor de Discord). */
+  private async demote(guild: Guild, discordId: string): Promise<void> {
+    const member = await guild.members.fetch(discordId).catch(() => null);
+    if (!member || member.user.bot) return;
+    try {
+      const viajero = this.config.AUTO_ROLE_ID;
+      if (viajero) await member.roles.add(viajero, "Inactivo: vuelve a Viajero");
+      if (member.roles.cache.has(this.config.PLAYER_ROLE_ID)) await member.roles.remove(this.config.PLAYER_ROLE_ID, "Inactivo");
+    } catch (error) {
+      log.warn(`No se pudo devolver a Viajero a ${discordId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /** Da Einherjar y quita Viajero. false si no se pudo (no está en el servidor, permisos...). */

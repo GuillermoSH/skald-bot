@@ -47,6 +47,7 @@ import { texts } from "./util/texts.js";
 
 // El servidor guarda las estadísticas en cada autoguardado (~5 min).
 const REALM_TICK_MS = 5 * 60_000;
+const INACTIVITY_CHECK_MS = 60 * 60_000;
 
 function main(): void {
   let config;
@@ -112,6 +113,10 @@ function main(): void {
         log.warn(`Chat del juego (${event.player}): ${error instanceof Error ? error.message : String(error)}`);
       });
     }
+    // Última conexión de quien sale (para la inactividad).
+    if (live && event.type === "leave" && ctx.linking) {
+      void ctx.linking.onPlayerLeave(event.player).catch(() => undefined);
+    }
     // Saludo en el chat del juego a quien entra.
     if (live && event.type === "join" && gameChat) {
       void gameChat.onJoin(event.player).catch((error: unknown) => {
@@ -165,6 +170,7 @@ function main(): void {
   let realmTimer: NodeJS.Timeout | null = null;
   let stopReminders: () => void = () => {};
   let stopPanel: () => void = () => {};
+  let inactivityTimer: NodeJS.Timeout | null = null;
 
   const needsMembers = heraldNeedsMembers(config);
   const client = new Client({
@@ -228,6 +234,16 @@ function main(): void {
     if (config.PLAYER_ROLE_ID && links) {
       ctx.linking = new Linking({ ...config, PLAYER_ROLE_ID: config.PLAYER_ROLE_ID }, links, new MojangClient(), ctx.names, world, (m) => adminSay(m));
       log.info("Unión al reino activa (botón en las runas)");
+      if (config.INACTIVITY_DAYS > 0) {
+        const linking = ctx.linking;
+        const check = () => {
+          linking.checkInactivity(ready, config.INACTIVITY_DAYS).catch((error: unknown) => {
+            log.warn(`Inactividad: ${error instanceof Error ? error.message : String(error)}`);
+          });
+        };
+        check();
+        inactivityTimer = setInterval(check, INACTIVITY_CHECK_MS);
+      }
     }
     try {
       const added = await realm.reconcileFirsts();
@@ -289,6 +305,7 @@ function main(): void {
     if (realmTimer) clearInterval(realmTimer);
     stopReminders();
     stopPanel();
+    if (inactivityTimer) clearInterval(inactivityTimer);
     alerts?.dispose();
     realm.close();
     void client.destroy().finally(() => process.exit(0));

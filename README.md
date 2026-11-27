@@ -103,6 +103,8 @@ Con `PLAYER_ROLE_ID` (el rol de quien juega), el mensaje de las runas lleva un b
 - Cada unión se avisa en el canal de administración (también los intentos con una cuenta ya unida a otra persona).
 - `/vincular @persona nombre` y `/desvincular @persona` (solo administradores) para unir a quien ya jugaba o arreglar un nombre equivocado. Desvincular no toca los roles.
 
+- **Inactividad**: quien lleva `INACTIVITY_DAYS` días (30 por defecto) sin entrar al servidor vuelve al rol automático, con un único mensaje privado (si los tiene cerrados, se dice en el canal de administración), y lo recupera solo en cuanto vuelve a entrar. La última conexión sale del log (o, si no hay, de la fecha de sus estadísticas). Los administradores nunca caducan, y si nadie ha entrado en una semana (servidor parado, vacaciones) no se toca a nadie.
+
 Mojang confirma que la cuenta existe, no que sea de quien la reclama: lo que da el rol es que esa cuenta entre de verdad al servidor.
 
 ### Skald en el chat del juego
@@ -200,6 +202,7 @@ Rellena `.env`:
 | `BACKUP_MAX_AGE_HOURS` | No | Horas sin copia nueva antes de avisar (por defecto 26) |
 | `BACKUPS_DIR` | No | Carpeta de copias (por defecto `/backups`, la del contenedor) |
 | `STATE_DIR` | No | Estado propio de Skald, lo único que escribe (por defecto `/state`; nunca dentro de `DATA_DIR`) |
+| `INACTIVITY_DAYS` | No | Días sin entrar antes de volver al rol automático (por defecto 30; 0 = nunca) |
 | `PLAYER_ROLE_ID` | No | Rol de quien juega; activa la unión al reino (botón en las runas, `/vincular`) |
 | `GAME_CHAT_ENABLED` | No | `true` para que Skald hable y escuche en el chat del juego (por defecto `false`) |
 | `GAME_CHAT_CHANNEL_ID` | No | Canal de las quedadas y encuestas creadas desde el juego |

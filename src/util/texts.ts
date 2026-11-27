@@ -318,6 +318,16 @@ export const texts = {
     adminPromoted: (user: string, name: string) => `⚔️ ${user} (**${name}**) entró al servidor: ahora es Einherjar.`,
     adminConflict: (user: string, name: string, other: string) => `⚠️ ${user} intentó unirse como **${name}**, que ya está unido a ${other}.`,
     adminUnlinked: (user: string, name: string, admin: string) => `✂️ ${admin} desvinculó a ${user} de **${name}**.`,
+    // Inactividad (Fase 3)
+    inactiveTitle: "💤 Tu escaño en el salón espera",
+    inactiveBody: (name: string, days: number) =>
+      `**${name}**, llevas ${days} días sin pisar el reino, así que vuelves a ser **Viajero** por ahora. ` +
+      "En cuanto entres al servidor recuperarás tu sitio entre los Einherjar, sin hacer nada más. ¡Te esperamos!",
+    returnTitle: "⚔️ Has vuelto al Valhalla",
+    returnBody: (name: string) => `**${name}**, el salón te recibe de nuevo: vuelves a ser **Einherjar**. ¡Skål!`,
+    adminInactive: (user: string, name: string, days: number) => `💤 ${user} (**${name}**) lleva ${days} días sin entrar: vuelve a Viajero.`,
+    adminInactiveNoDm: (user: string) => `-# No pude avisar a ${user} por privado (los tiene cerrados).`,
+    adminReturned: (user: string, name: string) => `⚔️ ${user} (**${name}**) ha vuelto al reino: Einherjar de nuevo.`,
     statusPending: "pendiente de entrar",
     statusActive: "Einherjar",
     // /vincular y /desvincular

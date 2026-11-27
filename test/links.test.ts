@@ -128,3 +128,94 @@ describe("Linking", () => {
     expect(added).toEqual(["200000000000000002"]);
   });
 });
+
+describe("inactividad", () => {
+  const DAY = 86_400_000;
+  const NOW = new Date("2026-12-31T12:00:00Z");
+  const config = {
+    ...loadConfig({
+      DISCORD_TOKEN: "x",
+      DISCORD_GUILD_ID: "123456789012345678",
+      RCON_PASSWORD: "x",
+      AUTO_ROLE_ID: "200000000000000001",
+      ADMIN_USER_IDS: "100000000000000009",
+    }),
+    PLAYER_ROLE_ID: "200000000000000002",
+  };
+
+  function setup(players: { uuid: string; savedAt: Date }[]) {
+    const links = new Links(memoryRealm().db);
+    const roleOps: string[] = [];
+    const dms: string[] = [];
+    const notices: string[] = [];
+    const member = {
+      user: { bot: false },
+      roles: {
+        cache: new Map([["200000000000000002", {}]]),
+        add: (id: string) => (roleOps.push(`+${id}`), Promise.resolve()),
+        remove: (id: string) => (roleOps.push(`-${id}`), Promise.resolve()),
+      },
+    };
+    const guild = { members: { fetch: () => Promise.resolve(member) } };
+    const client = {
+      guilds: { fetch: () => Promise.resolve(guild) },
+      users: { send: (id: string) => (dms.push(id), Promise.resolve()) },
+    } as unknown as Client<true>;
+    const world = { players: () => Promise.resolve(players.map((p) => ({ ...p, stats: {}, advancements: [] }))) } as unknown as WorldStats;
+    const linking = new Linking(config, links, new MojangClient(), new NameResolver(FIXTURE_DATA), world, (m) => (notices.push(m), Promise.resolve()));
+    const add = (discordId: string, uuid: string, lastSeen: Date | null) => {
+      links.create(discordId, uuid, `P${discordId.slice(-1)}`, null);
+      links.activate(discordId, lastSeen ?? NOW);
+      if (!lastSeen) links.seen(uuid, `P${discordId.slice(-1)}`, new Date(0));
+    };
+    return { links, linking, client, roleOps, dms, notices, add };
+  }
+
+  it("30 días sin entrar: vuelve a Viajero, con privado y aviso; los recientes y los admins no", async () => {
+    const recent = "aaaaaaaa-0000-4000-8000-000000000001";
+    const old = "aaaaaaaa-0000-4000-8000-000000000002";
+    const admin = "aaaaaaaa-0000-4000-8000-000000000003";
+    const { links, linking, client, roleOps, dms, notices, add } = setup([]);
+    add("100000000000000001", recent, new Date(NOW.getTime() - 2 * DAY));
+    add("100000000000000002", old, new Date(NOW.getTime() - 40 * DAY));
+    add("100000000000000009", admin, new Date(NOW.getTime() - 90 * DAY));
+    expect(await linking.checkInactivity(client, 30, NOW)).toBe(1);
+    expect(links.byDiscord("100000000000000002")?.status).toBe("inactive");
+    expect(links.byDiscord("100000000000000001")?.status).toBe("active");
+    expect(links.byDiscord("100000000000000009")?.status).toBe("active");
+    expect(roleOps).toEqual(["+200000000000000001", "-200000000000000002"]);
+    expect(dms).toEqual(["100000000000000002"]);
+    expect(notices[0]).toContain("30 días");
+    // Una sola vez.
+    expect(await linking.checkInactivity(client, 30, NOW)).toBe(0);
+  });
+
+  it("si nadie ha entrado en una semana (servidor parado), no toca a nadie", async () => {
+    const { linking, client, add } = setup([]);
+    add("100000000000000002", "aaaaaaaa-0000-4000-8000-000000000002", new Date(NOW.getTime() - 40 * DAY));
+    expect(await linking.checkInactivity(client, 30, NOW)).toBe(0);
+  });
+
+  it("sin entradas en el log, usa la fecha de sus estadísticas", async () => {
+    const uuid = "aaaaaaaa-0000-4000-8000-000000000002";
+    const other = "aaaaaaaa-0000-4000-8000-000000000001";
+    const { links, linking, client, add } = setup([
+      { uuid, savedAt: new Date(NOW.getTime() - 3 * DAY) },
+      { uuid: other, savedAt: new Date(NOW.getTime() - DAY) },
+    ]);
+    add("100000000000000002", uuid, null);
+    expect(await linking.checkInactivity(client, 30, NOW)).toBe(0);
+    expect(links.byDiscord("100000000000000002")?.status).toBe("active");
+  });
+
+  it("quien estaba inactivo y vuelve a entrar recupera Einherjar", async () => {
+    const floki = "33333333-3333-4333-8333-333333333333"; // está en el usercache de ejemplo
+    const { links, linking, client, roleOps, notices, add } = setup([]);
+    add("100000000000000003", floki, new Date(NOW.getTime() - 40 * DAY));
+    links.deactivate("100000000000000003");
+    await linking.onPlayerJoin(client, "Floki");
+    expect(links.byDiscord("100000000000000003")?.status).toBe("active");
+    expect(roleOps).toContain("+200000000000000002");
+    expect(notices.at(-1)).toContain("ha vuelto");
+  });
+});

@@ -95,6 +95,21 @@ export class Links {
     this.db.run("UPDATE links SET mc_name = ?, last_seen = ? WHERE uuid = ?", mcName, now.toISOString(), uuid.toLowerCase());
   }
 
+  /** Los que ahora son Einherjar. */
+  active(): Link[] {
+    return this.db.all<LinkRow>("SELECT * FROM links WHERE status = 'active'").map(toLink);
+  }
+
+  /** La última conexión más reciente de todos (para saber si el servidor está en uso). */
+  latestSeen(): Date | null {
+    const r = this.db.get<{ at: string | null }>("SELECT MAX(last_seen) AS at FROM links");
+    return r?.at ? new Date(r.at) : null;
+  }
+
+  deactivate(discordId: string): void {
+    this.db.run("UPDATE links SET status = 'inactive' WHERE discord_id = ? AND status = 'active'", discordId);
+  }
+
   remove(discordId: string): Link | null {
     const link = this.byDiscord(discordId);
     if (link) this.db.run("DELETE FROM links WHERE discord_id = ?", discordId);

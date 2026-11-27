@@ -5,7 +5,7 @@
  * Formato verificado en vanilla 26.2. El servidor los reescribe en cada
  * autoguardado (~5 min) y al desconectarse el jugador.
  */
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat as fileStat } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { log } from "../util/log.js";
@@ -28,6 +28,8 @@ export interface PlayerRecord {
   stats: StatsTable;
   /** Solo logros completados (sin recetas), del más reciente al más antiguo. */
   advancements: readonly Advancement[];
+  /** Última vez que el servidor guardó sus estadísticas (≈ última vez que jugó). */
+  savedAt?: Date;
 }
 
 /** No se pueden leer los ficheros del mundo (montaje ausente, ruta mal...). */
@@ -145,14 +147,15 @@ export class WorldStats {
 
   private async loadPlayer(uuid: string, playersDir: string): Promise<PlayerRecord | null> {
     try {
-      const stats = parseStatsFile(await readJson(path.join(playersDir, "stats", `${uuid}.json`)));
+      const statsFile = path.join(playersDir, "stats", `${uuid}.json`);
+      const [stats, info] = await Promise.all([readJson(statsFile).then(parseStatsFile), fileStat(statsFile)]);
       let advancements: Advancement[] = [];
       try {
         advancements = parseAdvancementsFile(await readJson(path.join(playersDir, "advancements", `${uuid}.json`)));
       } catch (error) {
         if (!isNotFound(error)) throw error;
       }
-      const record: PlayerRecord = { uuid, stats, advancements };
+      const record: PlayerRecord = { uuid, stats, advancements, savedAt: info.mtime };
       this.lastGood.set(uuid, record);
       return record;
     } catch (error) {
