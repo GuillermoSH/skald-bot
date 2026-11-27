@@ -32,6 +32,8 @@ import { GameChat } from "./ingame.js";
 import { startPanel } from "./panel.js";
 import { gameLine } from "./util/game.js";
 import { startReminderWatch } from "./reminder-watch.js";
+import { describePerformance } from "./commands/reino.js";
+import { LagMonitor } from "./core/lag.js";
 import { Linking, LINK_PREFIX } from "./linking.js";
 import { MojangClient } from "./core/mojang.js";
 import { publishRules } from "./rules.js";
@@ -48,6 +50,7 @@ import { texts } from "./util/texts.js";
 // El servidor guarda las estadísticas en cada autoguardado (~5 min).
 const REALM_TICK_MS = 5 * 60_000;
 const INACTIVITY_CHECK_MS = 60 * 60_000;
+const LAG_CHECK_MS = 60_000;
 
 function main(): void {
   let config;
@@ -190,7 +193,37 @@ function main(): void {
     void startLogWatch(ready);
     void startHerald(ready);
     void startBackupWatch(ready);
+    startLagWatch();
   });
+
+  // Aviso de lag en el canal de administración (solo cambios de estado; las caídas, no).
+  let lagTimer: NodeJS.Timeout | null = null;
+  const startLagWatch = () => {
+    if (!config.ADMIN_CHANNEL_ID) return;
+    const monitor = new LagMonitor();
+    const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
+    lagTimer = setInterval(() => {
+      void ctx.rcon
+        .queryTick()
+        // Congelado o acelerado a propósito (/tick): no es lag.
+        .then((tick) => (tick.state === "frozen" || tick.state === "sprinting" ? null : tick))
+        .catch(() => null)
+        .then(async (tick) => {
+          const sample = tick ? { tps: describePerformance(tick).tps, mspt: tick.averageMs } : null;
+          const change = monitor.update(sample);
+          if (!change) return;
+          log.info(`Lag: ${change.kind} (${fmt(change.sample.tps)} TPS)`);
+          await adminSay(
+            change.kind === "lag"
+              ? texts.lag.alert(fmt(change.sample.tps), fmt(change.sample.mspt))
+              : texts.lag.recovered(change.minutes, fmt(change.sample.tps)),
+          );
+        })
+        .catch((error: unknown) => {
+          log.warn(`Aviso de lag: ${error instanceof Error ? error.message : String(error)}`);
+        });
+    }, LAG_CHECK_MS);
+  };
 
   let backupWatcher: BackupWatcher | null = null;
   const startBackupWatch = async (ready: Client<true>) => {
@@ -306,6 +339,7 @@ function main(): void {
     stopReminders();
     stopPanel();
     if (inactivityTimer) clearInterval(inactivityTimer);
+    if (lagTimer) clearInterval(lagTimer);
     alerts?.dispose();
     realm.close();
     void client.destroy().finally(() => process.exit(0));

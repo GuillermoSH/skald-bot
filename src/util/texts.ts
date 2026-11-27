@@ -198,6 +198,8 @@ export const texts = {
     } satisfies Record<EarnCategory, string>,
     today: (label: string, earned: string, cap: string) => `${label} · ${earned} / ${cap}`,
     empty: "Los cofres del reino siguen vacíos. Las monedas se ganan jugando.",
+    yours: (name: string, coins: string, rank: number | null) =>
+      `**Tu cofre** (${name}): 🪙 ${coins}${rank ? ` · puesto **#${rank}**` : ""}`,
     note: "-# Se gana jugando: Skald hace cuentas cada ~5 min. El tiempo quieto (AFK) no cuenta.",
     disabled: "La economía del reino aún no está abierta.",
   },
@@ -237,6 +239,14 @@ export const texts = {
     backupNone: "Ninguna",
     backupWarn: { ok: "", none: "", stale: " ⚠️ antigua", small: " ⚠️ pequeña" } satisfies Record<BackupStatus, string>,
     changed: "Último cambio",
+  },
+
+  // Aviso de lag (canal de administración)
+  lag: {
+    alert: (tps: string, mspt: string) =>
+      `⚠️ **El reino se tambalea.** Lleva unos minutos con **${tps} TPS** (${mspt} ms por tick).\n` +
+      "-# Para ver qué lo causa: `/spark profiler start`, espera un par de minutos y `/spark profiler stop`.",
+    recovered: (minutes: number, tps: string) => `✅ **El reino vuelve a ir fino** (${tps} TPS) tras ${minutes} min de lag.`,
   },
 
   // Skald en el chat del juego (texto plano: sin Markdown de Discord)
