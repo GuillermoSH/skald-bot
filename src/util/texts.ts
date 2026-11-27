@@ -200,6 +200,8 @@ export const texts = {
     gameWeekly: (name: string, now: string, target: string) => `Reino: ${name} (${now}/${target})`,
     gameWeeklyDone: "¡Misión del reino cumplida! +100 monedas para todos los que aportaron.",
     gameRerolled: (task: string) => `Misión cambiada: ${task} (-20 monedas).`,
+    paidNow: (name: string, coins: string) => `🎉 ¡Misión cumplida! ${name} · +${coins} 🪙`,
+    paidStreak: (days: number, bonus: string) => `🔥 ¡Las tres de hoy! Racha de ${days} ${days === 1 ? "día" : "días"} · +${bonus} 🪙`,
     gameDone: (name: string, coins: string) => `Misión cumplida: ${name} (+${coins} monedas)`,
     gameStreak: (days: number, bonus: string) => `¡Las tres de hoy! Racha de ${days} ${days === 1 ? "día" : "días"} (+${bonus} monedas)`,
   },

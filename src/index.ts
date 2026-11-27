@@ -16,7 +16,7 @@ import { AuditFeed, describeAudit, watchDiscordRoles } from "./audit.js";
 import { BackupWatcher } from "./backup-watch.js";
 import { isCommandChannelAllowed } from "./commands/guard.js";
 import { commandsByName } from "./commands/index.js";
-import { taskName, weeklyName } from "./commands/tareas.js";
+import { announceTaskEvents, weeklyName } from "./commands/tareas.js";
 import { describePrize } from "./commands/ruleta.js";
 import { Roulette } from "./roulette.js";
 import { handleSeasonButton, handleSeasonModal, isSeasonModal, SEASON_BUTTON_ID, seasonProposalRow } from "./commands/temporada.js";
@@ -180,19 +180,8 @@ function main(): void {
         alerts?.pushLine("advancement", texts.tareas.weeklyAnnounce(name, weeklyMission.contributors.length));
         if (config.GAME_CHAT_ENABLED) await ctx.rcon.tellraw("@a", gameLine(texts.tareas.gameWeeklyDone)).catch(() => undefined);
       }
-      // Misiones cumplidas: aviso privado en el juego (si el chat del juego está activo).
-      if (tasks.length > 0) {
-        const names = await ctx.names.resolve(tasks.map((e) => e.uuid));
-        for (const e of tasks) {
-          const player = names.get(e.uuid);
-          log.info(`Misión: ${player ?? e.uuid} → ${e.task.id}${e.streak ? ` (racha ${e.streak.days})` : ""}`);
-          if (!player || !config.GAME_CHAT_ENABLED) continue;
-          await ctx.rcon.tellraw(player, gameLine(texts.tareas.gameDone(taskName(e.task), formatCount(e.coins)))).catch(() => undefined);
-          if (e.streak) {
-            await ctx.rcon.tellraw(player, gameLine(texts.tareas.gameStreak(e.streak.days, formatCount(e.streak.bonus)))).catch(() => undefined);
-          }
-        }
-      }
+      // Misiones cumplidas: al registro y aviso privado en el juego.
+      await announceTaskEvents(ctx, tasks);
       if (earnings.length > 0) log.debug(`Monedas: ${earnings.map((e) => `${e.uuid.slice(0, 8)} +${e.amount} ${e.category}`).join(", ")}`);
       if (milestones.length === 0) return;
       const names = await ctx.names.resolve(milestones.map((c) => c.uuid));

@@ -17,7 +17,7 @@ import type { TextPart } from "./core/rcon.js";
 import { MAX_PENDING_PER_USER } from "./core/reminders.js";
 import { describeClock, readWeather, readWorldClock } from "./core/sky.js";
 import { describeWeather } from "./commands/cielo.js";
-import { taskName, weeklyName } from "./commands/tareas.js";
+import { announceTaskEvents, taskName, weeklyName } from "./commands/tareas.js";
 import { describePrize, failureText } from "./commands/ruleta.js";
 import { TASK_REWARD } from "./core/tasks.js";
 import { parseWhen } from "./core/when.js";
@@ -226,7 +226,10 @@ export class GameChat {
       parts.push({ text: r.ok ? texts.tareas.gameRerolled(taskName(r.task)) : texts.tareas.rerollFail[r.reason], color: r.ok ? "green" : "red" }, { br: true });
     }
     parts.push({ text: texts.tareas.gameTitle, color: "yellow" });
-    for (const p of daily.progressFor(record)) {
+    // Si alguna ya llegó al objetivo, se paga ahora (el aviso sale justo antes de la lista).
+    const { progress, completed } = daily.check(record);
+    await announceTaskEvents(this.ctx, completed);
+    for (const p of progress) {
       const mark = p.done ? "✔ " : `${Math.floor(p.progress)}/${p.task.target} `;
       parts.push(
         { br: true },
@@ -240,7 +243,7 @@ export class GameChat {
     if (weekly) {
       const line = weekly.completedAt
         ? texts.tareas.gameWeeklyDone
-        : texts.tareas.gameWeekly(weeklyName(weekly.mission), formatCount(Math.floor(weekly.total)), formatCount(weekly.mission.target));
+        : texts.tareas.gameWeekly(weeklyName(weekly.mission), formatCount(Math.floor(Math.min(weekly.total, weekly.mission.target))), formatCount(weekly.mission.target));
       parts.push({ br: true }, { text: `  ${line}`, color: "aqua" });
     }
     return parts;

@@ -1,18 +1,36 @@
 import { SlashCommandBuilder, time, TimestampStyles } from "discord.js";
-import { TASK_REWARD, type TaskDef, type WeeklyMissionDef, type WeeklyStatus } from "../core/tasks.js";
+import { TASK_REWARD, type TaskDef, type TaskEvent, type WeeklyMissionDef, type WeeklyStatus } from "../core/tasks.js";
 import { zonedToUtc } from "../core/when.js";
 import { asset } from "../util/assets.js";
 import { baseEmbed } from "../util/embeds.js";
 import { safeText } from "../util/escape.js";
 import { formatCount } from "../util/format.js";
+import { gameLine } from "../util/game.js";
+import { log } from "../util/log.js";
 import { texts } from "../util/texts.js";
-import type { Command } from "./types.js";
+import type { Command, CommandContext } from "./types.js";
 
 const t = texts.tareas;
 const fmtTarget = (n: number) => formatCount(n);
 
 export const taskName = (task: TaskDef) => (t.names[task.id] ?? (() => task.id))(fmtTarget(task.target));
 export const weeklyName = (m: WeeklyMissionDef) => (t.weeklyNames[m.id] ?? (() => m.id))(fmtTarget(m.target));
+
+/**
+ * Misiones recién cumplidas: al registro y, si el chat del juego está activo, aviso
+ * privado en el juego (lo usan la revisión periódica, /tareas y !tareas).
+ */
+export async function announceTaskEvents(ctx: Pick<CommandContext, "config" | "names" | "rcon">, events: readonly TaskEvent[]): Promise<void> {
+  if (events.length === 0) return;
+  const names = await ctx.names.resolve(events.map((e) => e.uuid));
+  for (const e of events) {
+    const player = names.get(e.uuid);
+    log.info(`Misión: ${player ?? e.uuid} → ${e.task.id}${e.streak ? ` (racha ${e.streak.days})` : ""}`);
+    if (!player || !ctx.config.GAME_CHAT_ENABLED) continue;
+    await ctx.rcon.tellraw(player, gameLine(t.gameDone(taskName(e.task), formatCount(e.coins)))).catch(() => undefined);
+    if (e.streak) await ctx.rcon.tellraw(player, gameLine(t.gameStreak(e.streak.days, formatCount(e.streak.bonus)))).catch(() => undefined);
+  }
+}
 
 /** Barra de progreso con bloques (10 casillas). */
 export function progressBar(now: number, target: number): string {
@@ -31,7 +49,7 @@ export function nextReset(day: string, timeZone: string): Date | null {
 export function weeklyLines(s: WeeklyStatus, uuid: string | null): string[] {
   const lines = [t.weeklyHeading, `**${weeklyName(s.mission)}**`];
   if (s.completedAt) lines.push(t.weeklyDone);
-  else lines.push(t.weeklyProgress(progressBar(s.total, s.mission.target), formatCount(Math.floor(s.total)), fmtTarget(s.mission.target)));
+  else lines.push(t.weeklyProgress(progressBar(s.total, s.mission.target), formatCount(Math.floor(Math.min(s.total, s.mission.target))), fmtTarget(s.mission.target)));
   const mine = uuid ? s.contributions.get(uuid) : undefined;
   if (mine) lines.push(t.weeklyYours(formatCount(Math.floor(mine))));
   if (!s.completedAt) lines.push(t.weeklyReward);
@@ -62,7 +80,14 @@ export const tareas: Command = {
         const r = daily.reroll(player, slot);
         out.push(r.ok ? t.rerolled(taskName(r.old), taskName(r.task)) : t.rerollFail[r.reason], "");
       }
-      const progress = daily.progressFor(player);
+      // Si alguna ya llegó al objetivo, se paga ahora (no espera a la revisión).
+      const { progress, completed } = daily.check(player);
+      await announceTaskEvents(ctx, completed);
+      for (const e of completed) {
+        out.push(t.paidNow(taskName(e.task), formatCount(e.coins)));
+        if (e.streak) out.push(t.paidStreak(e.streak.days, formatCount(e.streak.bonus)));
+      }
+      if (completed.length > 0) out.push("");
       for (const p of progress) {
         const state = p.done ? t.done : t.progress(formatCount(Math.floor(p.progress)), fmtTarget(p.task.target));
         out.push(`**${p.slot}.** ${t.tier[p.task.tier]} ${taskName(p.task)} · ${state} · 🪙 ${formatCount(TASK_REWARD[p.task.tier])}`);

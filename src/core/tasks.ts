@@ -140,28 +140,42 @@ export class DailyTasks {
   /** Revisa el progreso de todos; devuelve las misiones recién cumplidas. */
   tick(players: readonly PlayerRecord[], now = new Date()): TaskEvent[] {
     const day = this.today(now);
-    const at = now.toISOString();
     return this.db.transaction(() => {
       const old = previousDay(previousDay(day));
       this.db.run("DELETE FROM daily_baselines WHERE day < ?", old);
       this.db.run("DELETE FROM daily_assignments WHERE day < ?", old);
-      const events: TaskEvent[] = [];
-      for (const player of players) {
-        for (const p of this.progressOf(player, day)) {
-          if (p.done || p.progress < p.task.target) continue;
-          this.db.run("INSERT OR IGNORE INTO daily_done (day, uuid, task, at) VALUES (?, ?, ?, ?)", day, player.uuid, p.task.id, at);
-          const coins = TASK_REWARD[p.task.tier];
-          this.wallet?.credit(player.uuid, coins, `${TASK_REASON_PREFIX}${p.task.id}`, day);
-          events.push({ uuid: player.uuid, task: p.task, coins, streak: this.maybeStreak(player.uuid, day) });
-        }
-      }
-      return events;
+      return players.flatMap((player) => this.settle(player, day, now));
     });
   }
 
-  /** Las misiones de hoy de un jugador con su progreso (las sortea si aún no tiene). */
+  /**
+   * Las misiones de hoy de un jugador con su progreso (las sortea si aún no tiene).
+   * Si alguna ya llegó al objetivo, la paga en el acto (no espera a la revisión).
+   */
+  check(player: PlayerRecord, now = new Date()): { progress: TaskProgress[]; completed: TaskEvent[] } {
+    const day = this.today(now);
+    return this.db.transaction(() => {
+      const completed = this.settle(player, day, now);
+      return { progress: this.progressOf(player, day), completed };
+    });
+  }
+
+  /** Igual que `check`, solo el progreso. */
   progressFor(player: PlayerRecord, now = new Date()): TaskProgress[] {
-    return this.db.transaction(() => this.progressOf(player, this.today(now)));
+    return this.check(player, now).progress;
+  }
+
+  /** Paga las que han llegado al objetivo y aún no estaban cumplidas. */
+  private settle(player: PlayerRecord, day: string, now: Date): TaskEvent[] {
+    const events: TaskEvent[] = [];
+    for (const p of this.progressOf(player, day)) {
+      if (p.done || p.progress < p.task.target) continue;
+      this.db.run("INSERT OR IGNORE INTO daily_done (day, uuid, task, at) VALUES (?, ?, ?, ?)", day, player.uuid, p.task.id, now.toISOString());
+      const coins = TASK_REWARD[p.task.tier];
+      this.wallet?.credit(player.uuid, coins, `${TASK_REASON_PREFIX}${p.task.id}`, day);
+      events.push({ uuid: player.uuid, task: p.task, coins, streak: this.maybeStreak(player.uuid, day) });
+    }
+    return events;
   }
 
   /** Cambia una misión (1-3) por otra de la misma dificultad, pagando, una vez al día. */
@@ -224,7 +238,8 @@ export class DailyTasks {
         );
         base = current;
       }
-      return { slot, task, progress: Math.max(0, current - base), done: done.has(task.id) };
+      // Con tope en el objetivo: «80/80», nunca «180/80».
+      return { slot, task, progress: Math.min(task.target, Math.max(0, current - base)), done: done.has(task.id) };
     });
   }
 

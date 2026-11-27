@@ -68,6 +68,19 @@ describe("misiones diarias individuales", () => {
     expect(economy.balance("a")).toBe(15 + 30 + 50 + 10);
   });
 
+  it("consultar paga en el acto lo ya cumplido, y el progreso tiene tope", () => {
+    const { tasks, economy } = setup();
+    tasks.tick([player("a", 1000)], DAY1);
+    const first = tasks.check(player("a", 3000), at(DAY1, 1));
+    expect(first.completed.map((e) => e.coins)).toEqual([TASK_REWARD.easy, TASK_REWARD.medium, TASK_REWARD.hard]);
+    expect(first.progress.every((p) => p.done && p.progress <= p.task.target)).toBe(true);
+    expect(economy.balance("a")).toBe(15 + 30 + 50 + 10);
+    // Ni otra consulta ni la revisión vuelven a pagar.
+    expect(tasks.check(player("a", 3000), at(DAY1, 1)).completed).toEqual([]);
+    expect(tasks.tick([player("a", 3000)], at(DAY1, 2))).toEqual([]);
+    expect(economy.balance("a")).toBe(15 + 30 + 50 + 10);
+  });
+
   it("la racha sigue al día siguiente y se rompe si se salta uno", () => {
     const { tasks } = setup();
     const play = (day: Date, start: number) => {
