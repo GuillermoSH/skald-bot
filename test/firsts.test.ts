@@ -60,3 +60,16 @@ describe("FirstsLedger", () => {
     expect(next.claim(NETHER, "Lagertha", new Date())).toBe(true);
   });
 });
+
+describe("primeros de cada uno", () => {
+  it("cuenta los del histórico (UUID) y los del log (nombre)", () => {
+    const { db, seasons, seasonId } = memoryRealm();
+    const l = new FirstsLedger(db, seasons, seasonId);
+    l.reconcile([player("u-ragnar", [["minecraft:story/mine_stone", "2026-09-01T00:00:00Z"]])]);
+    l.claim(NETHER, "Ragnar", new Date());
+    l.claim("advancements.end.kill_dragon.title", "Floki", new Date());
+    expect(l.countFor("u-ragnar", "ragnar")).toBe(2);
+    expect(l.countFor("u-floki", "Floki")).toBe(1);
+    expect(l.countFor("u-ivar", "Ivar")).toBe(0);
+  });
+});

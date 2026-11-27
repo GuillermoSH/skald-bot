@@ -13,7 +13,7 @@ Pensado para servidores **vanilla**, con una capa de adaptadores para dar soport
 | `/reino` | Estado del reino: jugadores, TPS, tiempo por tick, latencia y versión |
 | `/guerreros` | Quién está conectado ahora mismo |
 | `/gestas <categoría>` | Rankings: tiempo jugado, muertes, mobs, distancia… y otros menos serios (pasto de creepers, muertes tontas, lanzahuevos, rage quit…) |
-| `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia y últimos logros |
+| `/cronica <guerrero>` | Ficha de un jugador: horas, muertes y su verdugo, presa favorita, bloque más picado, distancia, primeros del reino y últimos logros |
 | `/duelo <guerrero> <rival>` | Enfrenta a dos jugadores gesta a gesta (en las muertes gana quien menos tiene) y da el marcador final |
 | `/hel [guerrero]` | Qué mata más en el reino (o a un guerrero): causas de muerte de todos los logs, Valhalla contra Hel |
 | `/tesoro [guerrero]` | Monedas de plata: los cofres más llenos (y el tuyo, con tu puesto, si estás unido al reino), o el de un guerrero con lo ganado hoy |

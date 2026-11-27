@@ -148,6 +148,11 @@ export class Realm {
     return this.active.firsts.reconcile(players ?? (await this.world.players()));
   }
 
+  /** Primeros del reino de alguien en la era actual (0 sin base de datos o en pausa). */
+  firstsOf(uuid: string, name: string): number {
+    return this.active?.firsts.countFor(uuid, name) ?? 0;
+  }
+
   /** ¿Es el primero del reino en esta temporada? (y lo apunta). */
   claimFirst(key: string, player: string, at: Date): boolean {
     return this.active?.firsts.claim(key, player, at) ?? false;

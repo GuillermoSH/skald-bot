@@ -57,6 +57,21 @@ export class FirstsLedger {
     return r ? { player: r.player_name, uuid: r.player_uuid, at: r.at, live: r.live === 1 } : undefined;
   }
 
+  /**
+   * Cuántos logros consiguió antes que nadie esta persona. Los del histórico se apuntan
+   * con el UUID y los del log en vivo con el nombre, así que se cuentan los dos.
+   */
+  countFor(uuid: string, name: string): number {
+    return (
+      this.db.get<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM firsts WHERE season_id = ? AND (player_uuid = ? OR LOWER(player_name) = LOWER(?))",
+        this.seasonId,
+        uuid.toLowerCase(),
+        name,
+      )?.n ?? 0
+    );
+  }
+
   /** Apunta en silencio lo que haya en los ficheros y no estuviera. Devuelve cuántos nuevos. */
   reconcile(players: readonly PlayerRecord[]): number {
     const earliest = new Map<string, { uuid: string; at: Date }>();

@@ -469,6 +469,7 @@ export const texts = {
     distance: "🧭 Distancia",
     advancements: (n: number) => `🏆 Logros (${n})`,
     noAdvancements: "Aún ninguno. Todo héroe empieza en algún sitio.",
+    firsts: (n: number) => (n === 1 ? "🌟 **1** primero del reino" : `🌟 **${n}** primeros del reino`),
     unknown: (name: string) => `Skald no conoce a ningún guerrero llamado **${name}**.`,
     invalidName: "Ese no parece un nombre de guerrero de Minecraft.",
   },

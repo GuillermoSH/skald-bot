@@ -41,6 +41,7 @@ export const cronica: Command = {
     const prey = topStat(player, "killed");
     const block = topStat(player, "mined");
     const deaths = stat(player, "custom", "deaths");
+    const firsts = ctx.realm.firstsOf(player.uuid, name);
 
     const latest = player.advancements.slice(0, 3).map((a) => {
       const when = a.doneAt ? ` · ${time(a.doneAt, TimestampStyles.RelativeTime)}` : "";
@@ -83,7 +84,9 @@ export const cronica: Command = {
         { name: t.distance, value: formatDistance(METRICS.distance.value(player)), inline: true },
         {
           name: t.advancements(player.advancements.length),
-          value: latest.length > 0 ? latest.join("\n") : t.noAdvancements,
+          value: [firsts > 0 ? t.firsts(firsts) : null, latest.length > 0 ? latest.join("\n") : t.noAdvancements]
+            .filter((l) => l !== null)
+            .join("\n"),
         },
       );
 
