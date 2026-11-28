@@ -7,12 +7,16 @@
  * cambiar una al día pagando. El progreso es lo que suben sus estadísticas en el día.
  * Cumplir una da monedas; cumplir las tres suma racha y un extra que crece con ella.
  *
+ * El progreso se adelanta en vivo con marcadores del juego si el servidor los tiene
+ * (`core/live.ts`); si no, llega con cada guardado del servidor.
+ *
  * Semanal (del reino): una por semana (de lunes a domingo) para todos; el progreso es
  * la suma de lo que aporta cada uno. Al cumplirse, todos los que han aportado reciben
  * el mismo premio.
  */
 import type { Database } from "./db.js";
 import { dayIn } from "./economy.js";
+import { live, type LiveStats, type LiveTerm } from "./live.js";
 import { cryptoRng, type Rng } from "./loot.js";
 import { isLogBlock } from "./metrics.js";
 import { stat, sumStats, type PlayerRecord } from "./stats.js";
@@ -28,43 +32,69 @@ export interface TaskDef {
   requires?: Dimension;
   /** Valor acumulado de la estadística (el progreso es la diferencia). */
   value(p: PlayerRecord): number;
+  /** Marcadores que lo adelantan en vivo (ver `core/live.ts`). */
+  live?: readonly LiveTerm[];
 }
 
-const killed = (mob: string) => (p: PlayerRecord) => stat(p, "killed", mob);
-const custom = (key: string) => (p: PlayerRecord) => stat(p, "custom", key);
-const mined = (...blocks: string[]) => (p: PlayerRecord) => blocks.reduce((n, b) => n + stat(p, "mined", b), 0);
-const distanceKm = (p: PlayerRecord) => sumStats(p, "custom", (k) => k.endsWith("_one_cm") && k !== "minecraft:fall_one_cm") / 100_000;
-const allMined = (p: PlayerRecord) => sumStats(p, "mined");
+/** Lo que mide una misión: el valor del fichero y, si se puede, sus marcadores en vivo. */
+type Measure = Pick<TaskDef, "value" | "live">;
+
+const killed = (mob: string): Measure => ({ value: (p) => stat(p, "killed", mob), live: live.killed(mob) });
+const custom = (key: string): Measure => ({ value: (p) => stat(p, "custom", key), live: live.custom(key) });
+const mined = (...blocks: string[]): Measure => ({
+  value: (p) => blocks.reduce((n, b) => n + stat(p, "mined", b), 0),
+  live: live.mined(...blocks),
+});
+
+// Para las sumas no hay un marcador único: en vivo se cuentan las más habituales (el
+// resto llega con el siguiente guardado).
+const DISTANCE_KEYS = [
+  "walk_one_cm", "sprint_one_cm", "crouch_one_cm", "swim_one_cm", "walk_on_water_one_cm", "walk_under_water_one_cm",
+  "climb_one_cm", "boat_one_cm", "horse_one_cm", "aviate_one_cm", "minecart_one_cm", "fly_one_cm",
+];
+const COMMON_BLOCKS = [
+  "stone", "deepslate", "dirt", "grass_block", "netherrack", "gravel", "sand", "tuff", "granite", "diorite", "andesite", "end_stone",
+];
+const LOG_BLOCKS = [
+  "oak_log", "spruce_log", "birch_log", "jungle_log", "acacia_log", "dark_oak_log", "mangrove_log", "cherry_log", "pale_oak_log",
+  "crimson_stem", "warped_stem",
+];
+const distanceKm: Measure = {
+  value: (p) => sumStats(p, "custom", (k) => k.endsWith("_one_cm") && k !== "minecraft:fall_one_cm") / 100_000,
+  live: live.custom(...DISTANCE_KEYS).map((t) => ({ ...t, scale: 1 / 100_000 })),
+};
+const allMined: Measure = { value: (p) => sumStats(p, "mined"), live: live.mined(...COMMON_BLOCKS) };
+const logs: Measure = { value: (p) => sumStats(p, "mined", isLogBlock), live: live.mined(...LOG_BLOCKS) };
 
 export const TASKS: readonly TaskDef[] = [
   // Fáciles
-  { id: "kill_mobs_easy", tier: "easy", target: 25, value: custom("mob_kills") },
-  { id: "mine_blocks_easy", tier: "easy", target: 160, value: allMined },
-  { id: "travel_easy", tier: "easy", target: 2, value: distanceKm },
-  { id: "fish_easy", tier: "easy", target: 6, value: custom("fish_caught") },
-  { id: "breed_easy", tier: "easy", target: 8, value: custom("animals_bred") },
-  { id: "kill_spiders", tier: "easy", target: 10, value: killed("spider") },
-  { id: "kill_zombified_piglins", tier: "easy", target: 15, requires: "nether", value: killed("zombified_piglin") },
+  { id: "kill_mobs_easy", tier: "easy", target: 25, ...custom("mob_kills") },
+  { id: "mine_blocks_easy", tier: "easy", target: 160, ...allMined },
+  { id: "travel_easy", tier: "easy", target: 2, ...distanceKm },
+  { id: "fish_easy", tier: "easy", target: 6, ...custom("fish_caught") },
+  { id: "breed_easy", tier: "easy", target: 8, ...custom("animals_bred") },
+  { id: "kill_spiders", tier: "easy", target: 10, ...killed("spider") },
+  { id: "kill_zombified_piglins", tier: "easy", target: 15, requires: "nether", ...killed("zombified_piglin") },
   // Medias
-  { id: "kill_zombies", tier: "medium", target: 30, value: killed("zombie") },
-  { id: "kill_skeletons", tier: "medium", target: 20, value: killed("skeleton") },
-  { id: "chop_logs", tier: "medium", target: 64, value: (p) => sumStats(p, "mined", isLogBlock) },
-  { id: "travel_medium", tier: "medium", target: 5, value: distanceKm },
-  { id: "mine_iron", tier: "medium", target: 24, value: mined("iron_ore", "deepslate_iron_ore") },
-  { id: "trade", tier: "medium", target: 12, value: custom("traded_with_villager") },
-  { id: "kill_blazes", tier: "medium", target: 8, requires: "nether", value: killed("blaze") },
-  { id: "mine_quartz", tier: "medium", target: 48, requires: "nether", value: mined("nether_quartz_ore") },
-  { id: "mine_end_stone", tier: "medium", target: 128, requires: "end", value: mined("end_stone") },
+  { id: "kill_zombies", tier: "medium", target: 30, ...killed("zombie") },
+  { id: "kill_skeletons", tier: "medium", target: 20, ...killed("skeleton") },
+  { id: "chop_logs", tier: "medium", target: 64, ...logs },
+  { id: "travel_medium", tier: "medium", target: 5, ...distanceKm },
+  { id: "mine_iron", tier: "medium", target: 24, ...mined("iron_ore", "deepslate_iron_ore") },
+  { id: "trade", tier: "medium", target: 12, ...custom("traded_with_villager") },
+  { id: "kill_blazes", tier: "medium", target: 8, requires: "nether", ...killed("blaze") },
+  { id: "mine_quartz", tier: "medium", target: 48, requires: "nether", ...mined("nether_quartz_ore") },
+  { id: "mine_end_stone", tier: "medium", target: 128, requires: "end", ...mined("end_stone") },
   // Difíciles
-  { id: "kill_creepers", tier: "hard", target: 12, value: killed("creeper") },
-  { id: "kill_endermen", tier: "hard", target: 6, value: killed("enderman") },
-  { id: "mine_diamonds", tier: "hard", target: 6, value: mined("diamond_ore", "deepslate_diamond_ore") },
-  { id: "kill_mobs_hard", tier: "hard", target: 80, value: custom("mob_kills") },
-  { id: "travel_hard", tier: "hard", target: 12, value: distanceKm },
-  { id: "mine_blocks_hard", tier: "hard", target: 1200, value: allMined },
-  { id: "mine_ancient_debris", tier: "hard", target: 3, requires: "nether", value: mined("ancient_debris") },
-  { id: "kill_wither_skeletons", tier: "hard", target: 10, requires: "nether", value: killed("wither_skeleton") },
-  { id: "kill_shulkers", tier: "hard", target: 6, requires: "end", value: killed("shulker") },
+  { id: "kill_creepers", tier: "hard", target: 12, ...killed("creeper") },
+  { id: "kill_endermen", tier: "hard", target: 6, ...killed("enderman") },
+  { id: "mine_diamonds", tier: "hard", target: 6, ...mined("diamond_ore", "deepslate_diamond_ore") },
+  { id: "kill_mobs_hard", tier: "hard", target: 80, ...custom("mob_kills") },
+  { id: "travel_hard", tier: "hard", target: 12, ...distanceKm },
+  { id: "mine_blocks_hard", tier: "hard", target: 1200, ...allMined },
+  { id: "mine_ancient_debris", tier: "hard", target: 3, requires: "nether", ...mined("ancient_debris") },
+  { id: "kill_wither_skeletons", tier: "hard", target: 10, requires: "nether", ...killed("wither_skeleton") },
+  { id: "kill_shulkers", tier: "hard", target: 6, requires: "end", ...killed("shulker") },
 ];
 
 export const TASK_REWARD: Readonly<Record<TaskTier, number>> = { easy: 15, medium: 30, hard: 50 };
@@ -131,6 +161,8 @@ export class DailyTasks {
     /** Donde van las monedas (null = economía apagada: solo progreso). */
     private readonly wallet: Wallet | null,
     private readonly rng: Rng = cryptoRng,
+    /** Marcadores en vivo de los conectados (null = solo ficheros). */
+    private readonly liveStats: LiveStats | null = null,
   ) {}
 
   today(now = new Date()): string {
@@ -225,7 +257,7 @@ export class DailyTasks {
   private progressOf(player: PlayerRecord, day: string): TaskProgress[] {
     const done = new Set(this.db.all<{ task: string }>("SELECT task FROM daily_done WHERE day = ? AND uuid = ?", day, player.uuid).map((r) => r.task));
     return this.assignments(player, day).map(({ slot, task }) => {
-      const current = task.value(player);
+      const current = task.value(player) + (task.live && this.liveStats ? this.liveStats.extra(player.uuid, player.savedAt, task.live) : 0);
       let base = this.db.get<{ value: number }>("SELECT value FROM daily_baselines WHERE day = ? AND uuid = ? AND metric = ?", day, player.uuid, task.id)?.value;
       if (base === undefined || current < base) {
         // Primera vez (o la estadística bajó): se empieza a contar desde aquí.
@@ -272,17 +304,18 @@ export interface WeeklyMissionDef {
   /** Solo si al menos la mitad de los que juegan han entrado en esa dimensión. */
   requires?: Dimension;
   value(p: PlayerRecord): number;
+  live?: readonly LiveTerm[];
 }
 
 export const WEEKLY_MISSIONS: readonly WeeklyMissionDef[] = [
-  { id: "kill_mobs", target: 1500, value: custom("mob_kills") },
-  { id: "mine_blocks", target: 25_000, value: allMined },
-  { id: "travel", target: 300, value: distanceKm },
-  { id: "fish", target: 150, value: custom("fish_caught") },
-  { id: "trade", target: 150, value: custom("traded_with_villager") },
-  { id: "chop_logs", target: 1500, value: (p) => sumStats(p, "mined", isLogBlock) },
-  { id: "kill_blazes", target: 150, requires: "nether", value: killed("blaze") },
-  { id: "mine_quartz", target: 800, requires: "nether", value: mined("nether_quartz_ore") },
+  { id: "kill_mobs", target: 1500, ...custom("mob_kills") },
+  { id: "mine_blocks", target: 25_000, ...allMined },
+  { id: "travel", target: 300, ...distanceKm },
+  { id: "fish", target: 150, ...custom("fish_caught") },
+  { id: "trade", target: 150, ...custom("traded_with_villager") },
+  { id: "chop_logs", target: 1500, ...logs },
+  { id: "kill_blazes", target: 150, requires: "nether", ...killed("blaze") },
+  { id: "mine_quartz", target: 800, requires: "nether", ...mined("nether_quartz_ore") },
 ];
 export const WEEKLY_REWARD = 100;
 export const WEEKLY_REASON = "weekly_mission";
@@ -315,6 +348,7 @@ export class WeeklyMission {
     private readonly timeZone: string,
     private readonly wallet: Wallet | null,
     private readonly rng: Rng = cryptoRng,
+    private readonly liveStats: LiveStats | null = null,
   ) {}
 
   /** Estado de la semana (la sortea si es nueva). */
@@ -352,7 +386,7 @@ export class WeeklyMission {
     const contributions = new Map<string, number>();
     let total = 0;
     for (const p of players) {
-      const current = mission.value(p);
+      const current = mission.value(p) + (mission.live && this.liveStats ? this.liveStats.extra(p.uuid, p.savedAt, mission.live) : 0);
       let base = this.db.get<{ value: number }>("SELECT value FROM weekly_mission_baselines WHERE week = ? AND uuid = ?", week, p.uuid)?.value;
       if (base === undefined || current < base) {
         this.db.run(
@@ -369,4 +403,9 @@ export class WeeklyMission {
     }
     return { week, mission, total, contributions, completedAt: row.completed_at };
   }
+}
+
+/** Todas las estadísticas con marcador de las misiones (para crearlos en el servidor). */
+export function liveTerms(): LiveTerm[] {
+  return [...TASKS, ...WEEKLY_MISSIONS].flatMap((m) => m.live ?? []);
 }

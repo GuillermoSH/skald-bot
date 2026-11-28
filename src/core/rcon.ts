@@ -8,8 +8,9 @@ import { parseList, parseTickQuery, parseTimeQuery, parseVersion, type PlayerLis
  * arbitrario (por ejemplo, algo escrito en Discord) al servidor. Para añadir
  * un comando hay que añadirlo aquí y escribir su función.
  *
- * Las excepciones son dos plantillas cerradas: `tellraw` (`buildTellraw`) y
- * `playsound` (`buildPlaysound`, solo sonidos de GAME_SOUNDS y a un jugador). En `tellraw`:
+ * Las excepciones son plantillas cerradas: `tellraw` (`buildTellraw`),
+ * `playsound` (`buildPlaysound`, solo sonidos de GAME_SOUNDS y a un jugador), `give`
+ * (`buildGive`) y `scoreboard players list <jugador>` (`buildScoresQuery`, solo lectura). En `tellraw`:
  * el destino es `@a` o un nombre válido, y el texto va siempre dentro de un
  * componente JSON generado con JSON.stringify (el servidor rechaza cualquier
  * cosa que vaya detrás, así que no se puede colar otro comando). Se escribe en SNBT compacto
@@ -152,6 +153,14 @@ export function buildGive(target: string, item: string, count: number, enchantme
   return `give ${target} ${item}${components} ${count}`;
 }
 
+// ---- scoreboard players list (plantilla cerrada, solo lectura)
+
+/** `scoreboard players list <jugador>`: los marcadores de un jugador (no cambia nada). */
+export function buildScoresQuery(target: string): string {
+  if (!PLAYER_RE.test(target)) throw new Error("Jugador de scoreboard no válido");
+  return `scoreboard players list ${target}`;
+}
+
 export interface RconSettings {
   host: string;
   port: number;
@@ -194,6 +203,13 @@ export class RconClient {
     return response ?? "";
   }
 
+  /** Respuesta de `scoreboard players list` de cada jugador, en una sola conexión. */
+  async playerScores(targets: readonly string[]): Promise<Map<string, string>> {
+    if (targets.length === 0) return new Map();
+    const responses = await this.exec(targets.map(buildScoresQuery));
+    return new Map(targets.map((name, i) => [name, responses[i] ?? ""]));
+  }
+
   /** Sonido para un jugador, con la plantilla cerrada. */
   async playSound(target: string, sound: GameSound): Promise<void> {
     await this.exec([buildPlaysound(target, sound)]);
@@ -220,7 +236,7 @@ export class RconClient {
     return (await this.exec(commands)) as { [K in keyof C]: string };
   }
 
-  /** Solo la llaman `send` (lista cerrada), `tellraw`, `playSound` y `give` (plantillas cerradas). */
+  /** Solo la llaman `send` (lista cerrada), `tellraw`, `playSound`, `give` y `playerScores` (plantillas cerradas). */
   private async exec(commands: readonly string[]): Promise<string[]> {
     const { host, port, password, timeoutMs } = this.settings;
     let rcon: Rcon;

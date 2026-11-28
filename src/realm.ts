@@ -12,6 +12,8 @@ import path from "node:path";
 import { backupDatabase, openStateDatabase, type Database } from "./core/db.js";
 import { Economy, topBalances, type Earning } from "./core/economy.js";
 import { FirstsLedger } from "./core/firsts.js";
+import { LiveStats } from "./core/live.js";
+import { cryptoRng } from "./core/loot.js";
 import { migrateLegacyState } from "./core/legacy-state.js";
 import { rank, type MetricId } from "./core/metrics.js";
 import { MilestoneTracker, type CrossedMilestone } from "./core/milestones.js";
@@ -60,6 +62,7 @@ export class Realm {
     tasks: DailyTasks;
     weekly: WeeklyMission;
   } | null = null;
+  private readonly live = new LiveStats();
   /** Mundo nuevo detectado y aún sin temporada (level-name del servidor). */
   private pendingLevel: string | null = null;
 
@@ -257,6 +260,11 @@ export class Realm {
     return this.active?.tasks ?? null;
   }
 
+  /** Marcadores en vivo de los conectados (null en pausa o sin base de datos). */
+  get liveStats(): LiveStats | null {
+    return this.active ? this.live : null;
+  }
+
   /** Misión semanal del reino (null en pausa o sin base de datos). */
   get weeklyMission(): WeeklyMission | null {
     return this.active?.weekly ?? null;
@@ -265,13 +273,14 @@ export class Realm {
   private activate(season: Season): void {
     if (!this.db || !this.seasonsRepo) return;
     const economy = this.options.economy ? new Economy(this.db, season.id, this.options.timeZone) : null;
+    this.live.clear();
     this.active = {
       season,
       firsts: new FirstsLedger(this.db, this.seasonsRepo, season.id),
       milestones: new MilestoneTracker(this.db, season.id),
       economy,
-      tasks: new DailyTasks(this.db, this.options.timeZone, economy),
-      weekly: new WeeklyMission(this.db, this.options.timeZone, economy),
+      tasks: new DailyTasks(this.db, this.options.timeZone, economy, cryptoRng, this.live),
+      weekly: new WeeklyMission(this.db, this.options.timeZone, economy, cryptoRng, this.live),
     };
   }
 }

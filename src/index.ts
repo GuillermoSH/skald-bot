@@ -36,6 +36,7 @@ import { GameChat } from "./ingame.js";
 import { startPanel } from "./panel.js";
 import { startWeeklySong } from "./weekly-song.js";
 import { gameLine } from "./util/game.js";
+import { startLiveWatch } from "./live-watch.js";
 import { startReminderWatch } from "./reminder-watch.js";
 import { describePerformance } from "./commands/reino.js";
 import { LagMonitor } from "./core/lag.js";
@@ -197,6 +198,7 @@ function main(): void {
   };
   let realmTimer: NodeJS.Timeout | null = null;
   let stopReminders: () => void = () => {};
+  let stopLive: () => void = () => {};
   let stopPanel: () => void = () => {};
   let stopWeekly: () => void = () => {};
   let inactivityTimer: NodeJS.Timeout | null = null;
@@ -327,6 +329,8 @@ function main(): void {
     // La primera vez, lo ya superado se apunta en silencio (hitos y monedas).
     await realmTick();
     realmTimer = setInterval(() => void realmTick(), REALM_TICK_MS);
+    // Misiones en vivo con los marcadores del juego (si el servidor los tiene).
+    stopLive = startLiveWatch(ctx);
     // Recordatorios y avisos de quedadas (necesitan la base de datos).
     const reminders = realm.reminders;
     if (reminders) {
@@ -372,6 +376,7 @@ function main(): void {
     backupWatcher?.stop();
     if (realmTimer) clearInterval(realmTimer);
     stopReminders();
+    stopLive();
     stopPanel();
     stopWeekly();
     if (inactivityTimer) clearInterval(inactivityTimer);
